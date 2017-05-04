@@ -252,7 +252,9 @@ func (a *Impl32) subWord(x uint32) uint32 {
 	a.Ortho(q[:])
 	a.Sbox(&q)
 	a.Ortho(q[:])
-	return q[0]
+	x = q[0]
+	memwipe32(q[:])
+	return x
 }
 
 func (a *Impl32) Keysched(compSkey []uint32, key []byte) int {
