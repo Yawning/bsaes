@@ -225,6 +225,19 @@ func (a *Impl32) Ortho(q []uint32) {
 	q[3], q[7] = (q[3]&cl8)|((q[7]&cl8)<<4), ((q[3]&ch8)>>4)|(q[7]&ch8)
 }
 
+func (a *Impl32) AddRoundKey(q *[8]uint32, sk []uint32) {
+	_ = sk[7] // Early bounds check.
+
+	q[0] ^= sk[0]
+	q[1] ^= sk[1]
+	q[2] ^= sk[2]
+	q[3] ^= sk[3]
+	q[4] ^= sk[4]
+	q[5] ^= sk[5]
+	q[6] ^= sk[6]
+	q[7] ^= sk[7]
+}
+
 func (a *Impl32) subWord(x uint32) uint32 {
 	var q [8]uint32
 
