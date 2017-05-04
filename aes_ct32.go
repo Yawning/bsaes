@@ -30,6 +30,8 @@ import (
 
 var rcon = [10]byte{0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36}
 
+// Impl32 is the 32 bit optimized implementation that processes 2 blocks at a
+// time.  Unless you know what you are doing you should use NewCipher instead.
 type Impl32 struct{}
 
 func (a *Impl32) Sbox(q *[8]uint32) {
