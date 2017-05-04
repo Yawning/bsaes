@@ -339,10 +339,6 @@ func (b *block32) BlockSize() int {
 func (b *block32) Encrypt(dst, src []byte) {
 	var q [8]uint32
 
-	// The bitsliced code actually does 2 blocks at a time, but the API
-	// only supports one block at a time.  Special case CTR and maybe CBC
-	// mode to take advantage of this.
-
 	q[0] = binary.LittleEndian.Uint32(src[:])
 	q[2] = binary.LittleEndian.Uint32(src[4:])
 	q[4] = binary.LittleEndian.Uint32(src[8:])
@@ -359,7 +355,21 @@ func (b *block32) Encrypt(dst, src []byte) {
 }
 
 func (b *block32) Decrypt(dst, src []byte) {
-	panic("aes/impl32: Decrypt: Not implemented")
+	var q [8]uint32
+
+	q[0] = binary.LittleEndian.Uint32(src[:])
+	q[2] = binary.LittleEndian.Uint32(src[4:])
+	q[4] = binary.LittleEndian.Uint32(src[8:])
+	q[6] = binary.LittleEndian.Uint32(src[12:])
+
+	b.a.Ortho(q[:])
+	b.a.Decrypt(b.numRounds, b.skExp[:], &q)
+	b.a.Ortho(q[:])
+
+	binary.LittleEndian.PutUint32(dst[:], q[0])
+	binary.LittleEndian.PutUint32(dst[4:], q[2])
+	binary.LittleEndian.PutUint32(dst[8:], q[4])
+	binary.LittleEndian.PutUint32(dst[12:], q[6])
 }
 
 func (b *block32) Reset() {

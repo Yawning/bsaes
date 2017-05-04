@@ -115,7 +115,8 @@ func TestECB_SP800_38A(t *testing.T) {
 		b.Encrypt(dst[:], pt)
 		assertEqual(t, i, ct, dst[:])
 
-		// TODO: When it's implemented, test decrypt.
+		b.Decrypt(dst[:], ct)
+		assertEqual(t, i, pt, dst[:])
 	}
 }
 
@@ -136,7 +137,7 @@ func assertEqual(t *testing.T, idx int, expected, actual []byte) {
 var benchOutput [16]byte
 
 func BenchmarkECB128(b *testing.B) {
-	var key, src, dst [16]byte
+	var key, src, dst, check [16]byte
 	if _, err := rand.Read(key[:]); err != nil {
 		b.Error(err)
 		b.Fail()
@@ -155,7 +156,11 @@ func BenchmarkECB128(b *testing.B) {
 		blk.Encrypt(dst[:], src[:])
 		b.StopTimer()
 
-		// TODO: Validate the decrypt, because why not.
+		blk.Decrypt(check[:], dst[:])
+
+		if !bytes.Equal(check[:], src[:]) {
+			b.Fatalf("decrypt produced invalid output")
+		}
 		copy(src[:], dst[:])
 	}
 	copy(benchOutput[:], dst[:])
