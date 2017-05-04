@@ -106,7 +106,7 @@ func TestECB_SP800_38A(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		b, err := New(key)
+		b, err := NewCipher(key)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -143,7 +143,7 @@ func BenchmarkECB128(b *testing.B) {
 		b.Fail()
 	}
 
-	blk, err := New(key[:])
+	blk, err := NewCipher(key[:])
 	if err != nil {
 		b.Error(err)
 		b.Fatal()

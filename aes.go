@@ -20,6 +20,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+// Package bsaes is a pure-Go bitsliced constant time AES implementation.
 package bsaes
 
 import (
@@ -32,7 +33,9 @@ const (
 	BlockSize = 16
 )
 
-func New(key []byte) (cipher.Block, error) {
+// NewCipher creates and returns a new cipher.Block.  The key argument should be
+// the AES key, either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+func NewCipher(key []byte) (cipher.Block, error) {
 	switch len(key) {
 	case 16, 24, 32:
 	default:
