@@ -9,6 +9,7 @@ package bsaes
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/hex"
 	"testing"
 )
@@ -130,4 +131,32 @@ func assertEqual(t *testing.T, idx int, expected, actual []byte) {
 		t.Errorf("actual: %s", hex.Dump(actual))
 		t.FailNow()
 	}
+}
+
+var benchOutput [16]byte
+
+func BenchmarkECB128(b *testing.B) {
+	var key, src, dst [16]byte
+	if _, err := rand.Read(key[:]); err != nil {
+		b.Error(err)
+		b.Fail()
+	}
+
+	blk, err := New(key[:])
+	if err != nil {
+		b.Error(err)
+		b.Fatal()
+	}
+
+	b.SetBytes(16)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StartTimer()
+		blk.Encrypt(dst[:], src[:])
+		b.StopTimer()
+
+		// TODO: Validate the decrypt, because why not.
+		copy(src[:], dst[:])
+	}
+	copy(benchOutput[:], dst[:])
 }
