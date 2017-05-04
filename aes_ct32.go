@@ -23,7 +23,10 @@
 
 package bsaes
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"runtime"
+)
 
 var rcon = [10]byte{0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36}
 
@@ -359,6 +362,10 @@ func (b *block32) Decrypt(dst, src []byte) {
 	panic("aes/impl32: Decrypt: Not implemented")
 }
 
+func (b *block32) Reset() {
+	memwipe32(b.skExp[:])
+}
+
 func newBlock32(key []byte) *block32 {
 	var skey [60]uint32
 	defer memwipe32(skey[:])
@@ -366,5 +373,7 @@ func newBlock32(key []byte) *block32 {
 	b := new(block32)
 	b.numRounds = b.a.Keysched(skey[:], key)
 	b.a.SkeyExpand(b.skExp[:], b.numRounds, skey[:])
+	runtime.SetFinalizer(b, (*block32).Reset)
+
 	return b
 }
