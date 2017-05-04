@@ -320,6 +320,20 @@ func (a *Impl32) SkeyExpand(skey []uint32, numRounds int, compSkey []uint32) {
 	}
 }
 
+func (a *Impl32) Load4xU32(q *[8]uint32, src []byte) {
+	q[0] = binary.LittleEndian.Uint32(src[:])
+	q[2] = binary.LittleEndian.Uint32(src[4:])
+	q[4] = binary.LittleEndian.Uint32(src[8:])
+	q[6] = binary.LittleEndian.Uint32(src[12:])
+}
+
+func (a *Impl32) Store4xU32(dst []byte, q *[8]uint32) {
+	binary.LittleEndian.PutUint32(dst[:], q[0])
+	binary.LittleEndian.PutUint32(dst[4:], q[2])
+	binary.LittleEndian.PutUint32(dst[8:], q[4])
+	binary.LittleEndian.PutUint32(dst[12:], q[6])
+}
+
 func rotr16(x uint32) uint32 {
 	return (x << 16) | (x >> 16)
 }
@@ -331,7 +345,7 @@ func memwipe32(s []uint32) {
 }
 
 type block32 struct {
-	a         Impl32
+	Impl32
 	skExp     [120]uint32
 	numRounds int
 }
@@ -343,37 +357,25 @@ func (b *block32) BlockSize() int {
 func (b *block32) Encrypt(dst, src []byte) {
 	var q [8]uint32
 
-	q[0] = binary.LittleEndian.Uint32(src[:])
-	q[2] = binary.LittleEndian.Uint32(src[4:])
-	q[4] = binary.LittleEndian.Uint32(src[8:])
-	q[6] = binary.LittleEndian.Uint32(src[12:])
+	b.Load4xU32(&q, src)
 
-	b.a.Ortho(q[:])
-	b.a.Encrypt(b.numRounds, b.skExp[:], &q)
-	b.a.Ortho(q[:])
+	b.Ortho(q[:])
+	b.Impl32.Encrypt(b.numRounds, b.skExp[:], &q)
+	b.Ortho(q[:])
 
-	binary.LittleEndian.PutUint32(dst[:], q[0])
-	binary.LittleEndian.PutUint32(dst[4:], q[2])
-	binary.LittleEndian.PutUint32(dst[8:], q[4])
-	binary.LittleEndian.PutUint32(dst[12:], q[6])
+	b.Store4xU32(dst, &q)
 }
 
 func (b *block32) Decrypt(dst, src []byte) {
 	var q [8]uint32
 
-	q[0] = binary.LittleEndian.Uint32(src[:])
-	q[2] = binary.LittleEndian.Uint32(src[4:])
-	q[4] = binary.LittleEndian.Uint32(src[8:])
-	q[6] = binary.LittleEndian.Uint32(src[12:])
+	b.Load4xU32(&q, src)
 
-	b.a.Ortho(q[:])
-	b.a.Decrypt(b.numRounds, b.skExp[:], &q)
-	b.a.Ortho(q[:])
+	b.Ortho(q[:])
+	b.Impl32.Decrypt(b.numRounds, b.skExp[:], &q)
+	b.Ortho(q[:])
 
-	binary.LittleEndian.PutUint32(dst[:], q[0])
-	binary.LittleEndian.PutUint32(dst[4:], q[2])
-	binary.LittleEndian.PutUint32(dst[8:], q[4])
-	binary.LittleEndian.PutUint32(dst[12:], q[6])
+	b.Store4xU32(dst, &q)
 }
 
 func (b *block32) Reset() {
@@ -385,8 +387,8 @@ func newBlock32(key []byte) *block32 {
 	defer memwipe32(skey[:])
 
 	b := new(block32)
-	b.numRounds = b.a.Keysched(skey[:], key)
-	b.a.SkeyExpand(b.skExp[:], b.numRounds, skey[:])
+	b.numRounds = b.Keysched(skey[:], key)
+	b.SkeyExpand(b.skExp[:], b.numRounds, skey[:])
 	runtime.SetFinalizer(b, (*block32).Reset)
 
 	return b
