@@ -26,9 +26,13 @@ package bsaes
 import (
 	"crypto/cipher"
 	"errors"
+	"unsafe"
 
 	"git.schwanenlied.me/yawning/bsaes.git/ct32"
+	"git.schwanenlied.me/yawning/bsaes.git/ct64"
 )
+
+var pointerSize = 8
 
 // NewCipher creates and returns a new cipher.Block.  The key argument should be
 // the AES key, either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
@@ -39,6 +43,19 @@ func NewCipher(key []byte) (cipher.Block, error) {
 		return nil, errors.New("aes: Invalid key size")
 	}
 
-	// XXX: Pick the better implementation based on target.
-	return ct32.NewCipher(key), nil
+	switch pointerSize {
+	case 4:
+		return ct32.NewCipher(key), nil
+	case 8:
+		return ct64.NewCipher(key), nil
+	}
+
+	// This could default to the 32 bit code, but really, what the fuck are
+	// you running this on?
+	panic("bsaes: unsupported pointer size")
+}
+
+func init() {
+	var foo uintptr
+	pointerSize = int(unsafe.Sizeof(foo))
 }
