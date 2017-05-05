@@ -350,6 +350,7 @@ func (a *Impl32) Load4xU32(q *[8]uint32, src []byte) {
 	q[3] = 0
 	q[5] = 0
 	q[7] = 0
+	a.Ortho(q[:])
 }
 
 func (a *Impl32) Load8xU32(q *[8]uint32, src0, src1 []byte) {
@@ -360,9 +361,11 @@ func (a *Impl32) Load8xU32(q *[8]uint32, src0, src1 []byte) {
 		q[i+4] = binary.LittleEndian.Uint32(s[8:])
 		q[i+6] = binary.LittleEndian.Uint32(s[12:])
 	}
+	a.Ortho(q[:])
 }
 
 func (a *Impl32) Store4xU32(dst []byte, q *[8]uint32) {
+	a.Ortho(q[:])
 	binary.LittleEndian.PutUint32(dst[:], q[0])
 	binary.LittleEndian.PutUint32(dst[4:], q[2])
 	binary.LittleEndian.PutUint32(dst[8:], q[4])
@@ -370,6 +373,7 @@ func (a *Impl32) Store4xU32(dst []byte, q *[8]uint32) {
 }
 
 func (a *Impl32) Store8xU32(dst0, dst1 []byte, q *[8]uint32) {
+	a.Ortho(q[:])
 	dst := [][]byte{dst0, dst1}
 	for i, d := range dst {
 		binary.LittleEndian.PutUint32(d[:], q[i])
@@ -403,11 +407,7 @@ func (b *block) Encrypt(dst, src []byte) {
 	var q [8]uint32
 
 	b.Load4xU32(&q, src)
-
-	b.Ortho(q[:])
 	b.Impl32.Encrypt(b.numRounds, b.skExp[:], &q)
-	b.Ortho(q[:])
-
 	b.Store4xU32(dst, &q)
 }
 
@@ -415,11 +415,7 @@ func (b *block) Decrypt(dst, src []byte) {
 	var q [8]uint32
 
 	b.Load4xU32(&q, src)
-
-	b.Ortho(q[:])
 	b.Impl32.Decrypt(b.numRounds, b.skExp[:], &q)
-	b.Ortho(q[:])
-
 	b.Store4xU32(dst, &q)
 }
 
