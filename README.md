@@ -16,3 +16,6 @@ It exposes the inner guts of the implementation(s) it provdes so it can be used
 for [other things](https://git.schwanenlied.me/yawning/aez), however exposed
 routines beyond the provided `crypto/Block` implementation will remain forever
 unstable and undocumented (much to the lamentations of `go lint`).
+
+ps: The BS stand for bullshit, because the runtime library really should be
+better.
