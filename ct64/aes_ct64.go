@@ -384,9 +384,25 @@ func (a *Impl64) SkeyExpand(skey []uint64, numRounds int, compSkey []uint64) {
 
 // RkeyOrtho
 
-// Load
+func (a *Impl64) Load4xU32(q *[8]uint64, src []byte) {
+	var w [4]uint32
 
-// Store
+	w[0] = binary.LittleEndian.Uint32(src[:])
+	w[1] = binary.LittleEndian.Uint32(src[4:])
+	w[2] = binary.LittleEndian.Uint32(src[8:])
+	w[3] = binary.LittleEndian.Uint32(src[12:])
+	a.InterleaveIn(&q[0], &q[4], w[:])
+}
+
+func (a *Impl64) Store4xU32(dst []byte, q *[8]uint64) {
+	var w [4]uint32
+
+	a.InterleaveOut(w[:], q[0], q[4])
+	binary.LittleEndian.PutUint32(dst[:], w[0])
+	binary.LittleEndian.PutUint32(dst[4:], w[1])
+	binary.LittleEndian.PutUint32(dst[8:], w[2])
+	binary.LittleEndian.PutUint32(dst[12:], w[3])
+}
 
 func rotr32(x uint64) uint64 {
 	return (x << 32) | (x >> 32)
@@ -410,40 +426,22 @@ func (b *block) BlockSize() int {
 
 func (b *block) Encrypt(dst, src []byte) {
 	var q [8]uint64
-	var w [4]uint32
 
-	w[0] = binary.LittleEndian.Uint32(src[:])
-	w[1] = binary.LittleEndian.Uint32(src[4:])
-	w[2] = binary.LittleEndian.Uint32(src[8:])
-	w[3] = binary.LittleEndian.Uint32(src[12:])
-	b.InterleaveIn(&q[0], &q[4], w[:])
+	b.Load4xU32(&q, src[:])
 	b.Ortho(q[:])
 	b.Impl64.Encrypt(b.numRounds, b.skExp[:], &q)
 	b.Ortho(q[:])
-	b.InterleaveOut(w[:], q[0], q[4])
-	binary.LittleEndian.PutUint32(dst[:], w[0])
-	binary.LittleEndian.PutUint32(dst[4:], w[1])
-	binary.LittleEndian.PutUint32(dst[8:], w[2])
-	binary.LittleEndian.PutUint32(dst[12:], w[3])
+	b.Store4xU32(dst[:], &q)
 }
 
 func (b *block) Decrypt(dst, src []byte) {
 	var q [8]uint64
-	var w [4]uint32
 
-	w[0] = binary.LittleEndian.Uint32(src[:])
-	w[1] = binary.LittleEndian.Uint32(src[4:])
-	w[2] = binary.LittleEndian.Uint32(src[8:])
-	w[3] = binary.LittleEndian.Uint32(src[12:])
-	b.InterleaveIn(&q[0], &q[4], w[:])
+	b.Load4xU32(&q, src[:])
 	b.Ortho(q[:])
 	b.Impl64.Decrypt(b.numRounds, b.skExp[:], &q)
 	b.Ortho(q[:])
-	b.InterleaveOut(w[:], q[0], q[4])
-	binary.LittleEndian.PutUint32(dst[:], w[0])
-	binary.LittleEndian.PutUint32(dst[4:], w[1])
-	binary.LittleEndian.PutUint32(dst[8:], w[2])
-	binary.LittleEndian.PutUint32(dst[12:], w[3])
+	b.Store4xU32(dst[:], &q)
 }
 
 func (b *block) Reset() {
