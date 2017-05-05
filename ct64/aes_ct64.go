@@ -428,6 +428,7 @@ func (a *Impl64) RkeyOrtho(qq []uint64, key []byte) {
 		skey[i] = 0
 	}
 	memwipeU64(compSkey[:])
+	memwipeU64(q[:])
 }
 
 func (a *Impl64) Load4xU32(q *[8]uint64, src []byte) {
