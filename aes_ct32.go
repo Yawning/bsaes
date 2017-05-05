@@ -253,7 +253,7 @@ func (a *Impl32) subWord(x uint32) uint32 {
 	a.Sbox(&q)
 	a.Ortho(q[:])
 	x = q[0]
-	memwipe32(q[:])
+	memwipeU32(q[:])
 	return x
 }
 
@@ -302,7 +302,7 @@ func (a *Impl32) Keysched(compSkey []uint32, key []byte) int {
 		compSkey[i] = (skey[j+0] & 0x55555555) | (skey[j+1] & 0xAAAAAAAA)
 	}
 
-	memwipe32(skey[:])
+	memwipeU32(skey[:])
 
 	return numRounds
 }
@@ -360,7 +360,7 @@ func rotr16(x uint32) uint32 {
 	return (x << 16) | (x >> 16)
 }
 
-func memwipe32(s []uint32) {
+func memwipeU32(s []uint32) {
 	for i := range s {
 		s[i] = 0
 	}
@@ -401,12 +401,12 @@ func (b *block32) Decrypt(dst, src []byte) {
 }
 
 func (b *block32) Reset() {
-	memwipe32(b.skExp[:])
+	memwipeU32(b.skExp[:])
 }
 
 func newBlock32(key []byte) *block32 {
 	var skey [60]uint32
-	defer memwipe32(skey[:])
+	defer memwipeU32(skey[:])
 
 	b := new(block32)
 	b.numRounds = b.Keysched(skey[:], key)
