@@ -320,6 +320,24 @@ func (a *Impl32) SkeyExpand(skey []uint32, numRounds int, compSkey []uint32) {
 	}
 }
 
+func (a *Impl32) RkeyOrtho(q []uint32, key []byte) {
+	for i := 0; i < 4; i++ {
+		x := binary.LittleEndian.Uint32(key[i<<2:])
+		q[(i<<1)+0] = x
+		q[(i<<1)+1] = x
+	}
+	a.Ortho(q[:])
+	for i, j := 0, 0; i < 4; i, j = i+1, j+2 {
+		x := (q[j+0] & 0x55555555) | (q[j+1] & 0xAAAAAAAA)
+		y := x
+
+		x &= 0x55555555
+		q[j+0] = x | (x << 1)
+		y &= 0xAAAAAAAA
+		q[j+1] = y | (y >> 1)
+	}
+}
+
 func (a *Impl32) Load4xU32(q *[8]uint32, src []byte) {
 	q[0] = binary.LittleEndian.Uint32(src[:])
 	q[2] = binary.LittleEndian.Uint32(src[4:])
