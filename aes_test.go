@@ -136,8 +136,10 @@ func assertEqual(t *testing.T, idx int, expected, actual []byte) {
 
 var benchOutput [16]byte
 
-func BenchmarkECB128(b *testing.B) {
-	var key, src, dst, check [16]byte
+func doBenchECB(b *testing.B, ksz int) {
+	var src, dst, check [16]byte
+
+	key := make([]byte, ksz)
 	if _, err := rand.Read(key[:]); err != nil {
 		b.Error(err)
 		b.Fail()
@@ -164,4 +166,16 @@ func BenchmarkECB128(b *testing.B) {
 		copy(src[:], dst[:])
 	}
 	copy(benchOutput[:], dst[:])
+}
+
+func BenchmarkECB128(b *testing.B) {
+	doBenchECB(b, 16)
+}
+
+func BenchmarkECB192(b *testing.B) {
+	doBenchECB(b, 24)
+}
+
+func BenchmarkECB256(b *testing.B) {
+	doBenchECB(b, 32)
 }
