@@ -343,6 +343,10 @@ func (a *Impl32) Load4xU32(q *[8]uint32, src []byte) {
 	q[2] = binary.LittleEndian.Uint32(src[4:])
 	q[4] = binary.LittleEndian.Uint32(src[8:])
 	q[6] = binary.LittleEndian.Uint32(src[12:])
+	q[1] = 0
+	q[3] = 0
+	q[5] = 0
+	q[7] = 0
 }
 
 func (a *Impl32) Store4xU32(dst []byte, q *[8]uint32) {
