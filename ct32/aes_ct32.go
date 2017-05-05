@@ -352,16 +352,14 @@ func (a *Impl32) Load4xU32(q *[8]uint32, src []byte) {
 	q[7] = 0
 }
 
-func (a *Impl32) Load8xU32(q *[8]uint32, lSrc, rSrc []byte) {
-	q[0] = binary.LittleEndian.Uint32(lSrc[:])
-	q[2] = binary.LittleEndian.Uint32(lSrc[4:])
-	q[4] = binary.LittleEndian.Uint32(lSrc[8:])
-	q[6] = binary.LittleEndian.Uint32(lSrc[12:])
-
-	q[1] = binary.LittleEndian.Uint32(rSrc[:])
-	q[3] = binary.LittleEndian.Uint32(rSrc[4:])
-	q[5] = binary.LittleEndian.Uint32(rSrc[8:])
-	q[7] = binary.LittleEndian.Uint32(rSrc[12:])
+func (a *Impl32) Load8xU32(q *[8]uint32, src0, src1 []byte) {
+	src := [][]byte{src0, src1}
+	for i, s := range src {
+		q[i] = binary.LittleEndian.Uint32(s[:])
+		q[i+2] = binary.LittleEndian.Uint32(s[4:])
+		q[i+4] = binary.LittleEndian.Uint32(s[8:])
+		q[i+6] = binary.LittleEndian.Uint32(s[12:])
+	}
 }
 
 func (a *Impl32) Store4xU32(dst []byte, q *[8]uint32) {
@@ -371,16 +369,14 @@ func (a *Impl32) Store4xU32(dst []byte, q *[8]uint32) {
 	binary.LittleEndian.PutUint32(dst[12:], q[6])
 }
 
-func (a *Impl32) Store8xU32(lDst, rDst []byte, q *[8]uint32) {
-	binary.LittleEndian.PutUint32(lDst[:], q[0])
-	binary.LittleEndian.PutUint32(lDst[4:], q[2])
-	binary.LittleEndian.PutUint32(lDst[8:], q[4])
-	binary.LittleEndian.PutUint32(lDst[12:], q[6])
-
-	binary.LittleEndian.PutUint32(rDst[:], q[1])
-	binary.LittleEndian.PutUint32(rDst[4:], q[3])
-	binary.LittleEndian.PutUint32(rDst[8:], q[5])
-	binary.LittleEndian.PutUint32(rDst[12:], q[7])
+func (a *Impl32) Store8xU32(dst0, dst1 []byte, q *[8]uint32) {
+	dst := [][]byte{dst0, dst1}
+	for i, d := range dst {
+		binary.LittleEndian.PutUint32(d[:], q[i])
+		binary.LittleEndian.PutUint32(d[4:], q[i+2])
+		binary.LittleEndian.PutUint32(d[8:], q[i+4])
+		binary.LittleEndian.PutUint32(d[12:], q[i+6])
+	}
 }
 
 func rotr16(x uint32) uint32 {
