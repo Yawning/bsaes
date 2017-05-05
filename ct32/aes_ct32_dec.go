@@ -21,7 +21,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package bsaes
+package ct32
 
 func (a *Impl32) InvSbox(q *[8]uint32) {
 	// AES S-box is:

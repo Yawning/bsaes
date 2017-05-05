@@ -21,9 +21,12 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package bsaes
+// Package ct32 is a 32 bit optimized AES implementation that processes 2
+// blocks at a time.
+package ct32
 
 import (
+	"crypto/cipher"
 	"encoding/binary"
 	"runtime"
 )
@@ -366,17 +369,17 @@ func memwipeU32(s []uint32) {
 	}
 }
 
-type block32 struct {
+type block struct {
 	Impl32
 	skExp     [120]uint32
 	numRounds int
 }
 
-func (b *block32) BlockSize() int {
-	return BlockSize
+func (b *block) BlockSize() int {
+	return 16
 }
 
-func (b *block32) Encrypt(dst, src []byte) {
+func (b *block) Encrypt(dst, src []byte) {
 	var q [8]uint32
 
 	b.Load4xU32(&q, src)
@@ -388,7 +391,7 @@ func (b *block32) Encrypt(dst, src []byte) {
 	b.Store4xU32(dst, &q)
 }
 
-func (b *block32) Decrypt(dst, src []byte) {
+func (b *block) Decrypt(dst, src []byte) {
 	var q [8]uint32
 
 	b.Load4xU32(&q, src)
@@ -400,18 +403,19 @@ func (b *block32) Decrypt(dst, src []byte) {
 	b.Store4xU32(dst, &q)
 }
 
-func (b *block32) Reset() {
+func (b *block) Reset() {
 	memwipeU32(b.skExp[:])
 }
 
-func newBlock32(key []byte) *block32 {
+// NewCipher creates and returns a new cipher.Block, backed by a Impl32.
+func NewCipher(key []byte) cipher.Block {
 	var skey [60]uint32
 	defer memwipeU32(skey[:])
 
-	b := new(block32)
+	b := new(block)
 	b.numRounds = b.Keysched(skey[:], key)
 	b.SkeyExpand(b.skExp[:], b.numRounds, skey[:])
-	runtime.SetFinalizer(b, (*block32).Reset)
+	runtime.SetFinalizer(b, (*block).Reset)
 
 	return b
 }

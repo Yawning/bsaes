@@ -21,7 +21,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package bsaes
+package ct32
 
 func (a *Impl32) ShiftRows(q *[8]uint32) {
 	for i := 0; i < 8; i++ {

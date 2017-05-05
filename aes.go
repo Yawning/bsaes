@@ -26,11 +26,8 @@ package bsaes
 import (
 	"crypto/cipher"
 	"errors"
-)
 
-const (
-	// BlockSize is the AES block size in bytes.
-	BlockSize = 16
+	"git.schwanenlied.me/yawning/bsaes.git/ct32"
 )
 
 // NewCipher creates and returns a new cipher.Block.  The key argument should be
@@ -43,5 +40,5 @@ func NewCipher(key []byte) (cipher.Block, error) {
 	}
 
 	// XXX: Pick the better implementation based on target.
-	return newBlock32(key), nil
+	return ct32.NewCipher(key), nil
 }
