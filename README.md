@@ -17,9 +17,10 @@ for [other things](https://git.schwanenlied.me/yawning/aez), however exposed
 routines beyond the provided `crypto/Block` implementation will remain forever
 unstable and undocumented (much to the lamentations of `go lint`).
 
-**WARNING:** GCM-AES WILL NOT BE CONSTANT TIME.  On systems where the runtime
-library will grace you with a constant time GHASH implementation, it would be,
-but on such systems, AES would be hardware accelerated as well.
+**WARNING:** The GCM-AES provided by `crypto/cipher` **WILL NOT BE CONSTANT
+TIME** on systems with a vartime `crypto/aes`, so this implementation will
+error out when an attempt is made to combine it with `cipher.NewGCM` or
+`cipher.NewGCMWithNonceSize`.
 
 ps: The BS stand for bullshit, because the runtime library really should be
 better.

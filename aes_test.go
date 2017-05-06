@@ -136,6 +136,25 @@ func TestECB_SP800_38A(t *testing.T) {
 	}
 }
 
+func TestGCM(t *testing.T) {
+	// Ensure that attempting to use GCM mode with this via
+	// `crypto/cipher.NewGCM` fails.
+	var key [16]byte
+
+	for _, impl := range impls {
+		b := impl.ctor(key[:])
+		g, err := cipher.NewGCM(b)
+		if g != nil {
+			t.Errorf("[%s]: NewGCM() returned a cipher.AEAD, expected nil", impl.name)
+			t.FailNow()
+		}
+		if err == nil {
+			t.Errorf("[%s]: NewGCM() returned no error, expected failure", impl.name)
+			t.FailNow()
+		}
+	}
+}
+
 func assertEqual(t *testing.T, idx int, expected, actual []byte) {
 	if !bytes.Equal(expected, actual) {
 		for i, v := range actual {

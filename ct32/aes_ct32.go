@@ -29,6 +29,8 @@ import (
 	"crypto/cipher"
 	"encoding/binary"
 	"runtime"
+
+	"git.schwanenlied.me/yawning/bsaes.git/internal/modes"
 )
 
 var rcon = [10]byte{0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36}
@@ -390,6 +392,8 @@ func memwipeU32(s []uint32) {
 }
 
 type block struct {
+	modes.GcmAbleImpl
+
 	skExp     [120]uint32
 	numRounds int
 }
