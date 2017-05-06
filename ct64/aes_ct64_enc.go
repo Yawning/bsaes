@@ -23,7 +23,7 @@
 
 package ct64
 
-func (a *Impl64) ShiftRows(q *[8]uint64) {
+func ShiftRows(q *[8]uint64) {
 	for i, x := range q {
 		q[i] = (x & 0x000000000000FFFF) |
 			((x & 0x00000000FFF00000) >> 4) |
@@ -35,7 +35,7 @@ func (a *Impl64) ShiftRows(q *[8]uint64) {
 	}
 }
 
-func (a *Impl64) MixColumns(q *[8]uint64) {
+func MixColumns(q *[8]uint64) {
 	q0 := q[0]
 	q1 := q[1]
 	q2 := q[2]
@@ -63,15 +63,15 @@ func (a *Impl64) MixColumns(q *[8]uint64) {
 	q[7] = q6 ^ r6 ^ r7 ^ rotr32(q7^r7)
 }
 
-func (a *Impl64) Encrypt(numRounds int, skey []uint64, q *[8]uint64) {
-	a.AddRoundKey(q, skey)
+func encrypt(numRounds int, skey []uint64, q *[8]uint64) {
+	AddRoundKey(q, skey)
 	for u := 1; u < numRounds; u++ {
-		a.Sbox(q)
-		a.ShiftRows(q)
-		a.MixColumns(q)
-		a.AddRoundKey(q, skey[u<<3:])
+		Sbox(q)
+		ShiftRows(q)
+		MixColumns(q)
+		AddRoundKey(q, skey[u<<3:])
 	}
-	a.Sbox(q)
-	a.ShiftRows(q)
-	a.AddRoundKey(q, skey[numRounds<<3:])
+	Sbox(q)
+	ShiftRows(q)
+	AddRoundKey(q, skey[numRounds<<3:])
 }

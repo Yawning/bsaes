@@ -23,7 +23,7 @@
 
 package ct32
 
-func (a *Impl32) InvSbox(q *[8]uint32) {
+func InvSbox(q *[8]uint32) {
 	// AES S-box is:
 	//   S(x) = A(I(x)) ^ 0x63
 	// where I() is inversion in GF(256), and A() is a linear
@@ -59,7 +59,7 @@ func (a *Impl32) InvSbox(q *[8]uint32) {
 	q[1] = q3 ^ q6 ^ q0
 	q[0] = q2 ^ q5 ^ q7
 
-	a.Sbox(q)
+	Sbox(q)
 
 	q0 = ^q[0]
 	q1 = ^q[1]
@@ -79,7 +79,7 @@ func (a *Impl32) InvSbox(q *[8]uint32) {
 	q[0] = q2 ^ q5 ^ q7
 }
 
-func (a *Impl32) InvShiftRows(q *[8]uint32) {
+func InvShiftRows(q *[8]uint32) {
 	for i := 0; i < 8; i++ {
 		x := q[i]
 		q[i] = (x & 0x000000FF) |
@@ -89,7 +89,7 @@ func (a *Impl32) InvShiftRows(q *[8]uint32) {
 	}
 }
 
-func (a *Impl32) InvMixColumns(q *[8]uint32) {
+func InvMixColumns(q *[8]uint32) {
 	var q0, q1, q2, q3, q4, q5, q6, q7 uint32
 	var r0, r1, r2, r3, r4, r5, r6, r7 uint32
 
@@ -120,15 +120,15 @@ func (a *Impl32) InvMixColumns(q *[8]uint32) {
 	q[7] = q4 ^ q5 ^ q6 ^ r4 ^ r6 ^ r7 ^ rotr16(q4^q5^q7^r4^r7)
 }
 
-func (a *Impl32) Decrypt(numRounds int, skey []uint32, q *[8]uint32) {
-	a.AddRoundKey(q, skey[numRounds<<3:])
+func decrypt(numRounds int, skey []uint32, q *[8]uint32) {
+	AddRoundKey(q, skey[numRounds<<3:])
 	for u := numRounds - 1; u > 0; u-- {
-		a.InvShiftRows(q)
-		a.InvSbox(q)
-		a.AddRoundKey(q, skey[u<<3:])
-		a.InvMixColumns(q)
+		InvShiftRows(q)
+		InvSbox(q)
+		AddRoundKey(q, skey[u<<3:])
+		InvMixColumns(q)
 	}
-	a.InvShiftRows(q)
-	a.InvSbox(q)
-	a.AddRoundKey(q, skey)
+	InvShiftRows(q)
+	InvSbox(q)
+	AddRoundKey(q, skey)
 }

@@ -33,11 +33,7 @@ import (
 
 var rcon = [10]byte{0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36}
 
-// Impl64 is the 64 bit optmized implementation that processes 4 blocks at a
-// time.  Unless you know what you are doing, you should use NewCipher instead.
-type Impl64 struct{}
-
-func (a *Impl64) Sbox(q *[8]uint64) {
+func Sbox(q *[8]uint64) {
 	// This S-box implementation is a straightforward translation of
 	// the circuit described by Boyar and Peralta in "A new
 	// combinational logic minimization technique with applications
@@ -209,7 +205,7 @@ func (a *Impl64) Sbox(q *[8]uint64) {
 	q[0] = s7
 }
 
-func (a *Impl64) Ortho(q []uint64) {
+func Ortho(q []uint64) {
 	_ = q[7] // Early bounds check.
 
 	const cl2, ch2 = 0x5555555555555555, 0xAAAAAAAAAAAAAAAA
@@ -231,7 +227,7 @@ func (a *Impl64) Ortho(q []uint64) {
 	q[3], q[7] = (q[3]&cl8)|((q[7]&cl8)<<4), ((q[3]&ch8)>>4)|(q[7]&ch8)
 }
 
-func (a *Impl64) InterleaveIn(q0, q1 *uint64, w []uint32) {
+func InterleaveIn(q0, q1 *uint64, w []uint32) {
 	_ = w[3]
 	x0, x1, x2, x3 := uint64(w[0]), uint64(w[1]), uint64(w[2]), uint64(w[3])
 	x0 |= (x0 << 16)
@@ -254,7 +250,7 @@ func (a *Impl64) InterleaveIn(q0, q1 *uint64, w []uint32) {
 	*q1 = x1 | (x3 << 8)
 }
 
-func (a *Impl64) InterleaveOut(w []uint32, q0, q1 uint64) {
+func InterleaveOut(w []uint32, q0, q1 uint64) {
 	var x0, x1, x2, x3 uint64
 
 	_ = w[3]
@@ -276,7 +272,7 @@ func (a *Impl64) InterleaveOut(w []uint32, q0, q1 uint64) {
 	w[3] = uint32(x3) | uint32(x3>>16)
 }
 
-func (a *Impl64) AddRoundKey(q *[8]uint64, sk []uint64) {
+func AddRoundKey(q *[8]uint64, sk []uint64) {
 	_ = sk[7]
 
 	q[0] ^= sk[0]
@@ -289,19 +285,19 @@ func (a *Impl64) AddRoundKey(q *[8]uint64, sk []uint64) {
 	q[7] ^= sk[7]
 }
 
-func (a *Impl64) subWord(x uint32) uint32 {
+func subWord(x uint32) uint32 {
 	var q [8]uint64
 
 	q[0] = uint64(x)
-	a.Ortho(q[:])
-	a.Sbox(&q)
-	a.Ortho(q[:])
+	Ortho(q[:])
+	Sbox(&q)
+	Ortho(q[:])
 	x = uint32(q[0])
 	memwipeU64(q[:])
 	return x
 }
 
-func (a *Impl64) Keysched(compSkey []uint64, key []byte) int {
+func Keysched(compSkey []uint64, key []byte) int {
 	numRounds := 0
 	keyLen := len(key)
 	switch keyLen {
@@ -325,9 +321,9 @@ func (a *Impl64) Keysched(compSkey []uint64, key []byte) int {
 	for i, j, k := nk, 0, 0; i < nkf; i++ {
 		if j == 0 {
 			tmp = (tmp << 24) | (tmp >> 8)
-			tmp = a.subWord(tmp) ^ uint32(rcon[k])
+			tmp = subWord(tmp) ^ uint32(rcon[k])
 		} else if nk > 6 && j == 4 {
-			tmp = a.subWord(tmp)
+			tmp = subWord(tmp)
 		}
 		tmp ^= skey[i-nk]
 		skey[i] = tmp
@@ -339,14 +335,14 @@ func (a *Impl64) Keysched(compSkey []uint64, key []byte) int {
 
 	var q [8]uint64
 	for i, j := 0, 0; i < nkf; i, j = i+4, j+2 {
-		a.InterleaveIn(&q[0], &q[4], skey[i:])
+		InterleaveIn(&q[0], &q[4], skey[i:])
 		q[1] = q[0]
 		q[2] = q[0]
 		q[3] = q[0]
 		q[5] = q[4]
 		q[6] = q[4]
 		q[7] = q[4]
-		a.Ortho(q[:])
+		Ortho(q[:])
 		compSkey[j+0] = (q[0] & 0x1111111111111111) |
 			(q[1] & 0x2222222222222222) | (q[2] & 0x4444444444444444) |
 			(q[3] & 0x8888888888888888)
@@ -363,7 +359,7 @@ func (a *Impl64) Keysched(compSkey []uint64, key []byte) int {
 	return numRounds
 }
 
-func (a *Impl64) SkeyExpand(skey []uint64, numRounds int, compSkey []uint64) {
+func SkeyExpand(skey []uint64, numRounds int, compSkey []uint64) {
 	n := (numRounds + 1) << 1
 	for u, v := 0, 0; u < n; u, v = u+1, v+4 {
 		x0 := compSkey[u]
@@ -382,7 +378,7 @@ func (a *Impl64) SkeyExpand(skey []uint64, numRounds int, compSkey []uint64) {
 	}
 }
 
-func (a *Impl64) RkeyOrtho(qq []uint64, key []byte) {
+func RkeyOrtho(qq []uint64, key []byte) {
 	var skey [16]uint32
 	var compSkey [16]uint64
 
@@ -392,14 +388,14 @@ func (a *Impl64) RkeyOrtho(qq []uint64, key []byte) {
 
 	var q [8]uint64
 	for i, j := 0, 0; i < 4; i, j = i+4, j+2 {
-		a.InterleaveIn(&q[0], &q[4], skey[i:])
+		InterleaveIn(&q[0], &q[4], skey[i:])
 		q[1] = q[0]
 		q[2] = q[0]
 		q[3] = q[0]
 		q[5] = q[4]
 		q[6] = q[4]
 		q[7] = q[4]
-		a.Ortho(q[:])
+		Ortho(q[:])
 		compSkey[j+0] = (q[0] & 0x1111111111111111) |
 			(q[1] & 0x2222222222222222) | (q[2] & 0x4444444444444444) |
 			(q[3] & 0x8888888888888888)
@@ -431,18 +427,18 @@ func (a *Impl64) RkeyOrtho(qq []uint64, key []byte) {
 	memwipeU64(q[:])
 }
 
-func (a *Impl64) Load4xU32(q *[8]uint64, src []byte) {
+func Load4xU32(q *[8]uint64, src []byte) {
 	var w [4]uint32
 
 	w[0] = binary.LittleEndian.Uint32(src[:])
 	w[1] = binary.LittleEndian.Uint32(src[4:])
 	w[2] = binary.LittleEndian.Uint32(src[8:])
 	w[3] = binary.LittleEndian.Uint32(src[12:])
-	a.InterleaveIn(&q[0], &q[4], w[:])
-	a.Ortho(q[:])
+	InterleaveIn(&q[0], &q[4], w[:])
+	Ortho(q[:])
 }
 
-func (a *Impl64) Load16xU32(q *[8]uint64, src0, src1, src2, src3 []byte) {
+func Load16xU32(q *[8]uint64, src0, src1, src2, src3 []byte) {
 	var w [4]uint32
 
 	src := [][]byte{src0, src1, src2, src3}
@@ -451,29 +447,29 @@ func (a *Impl64) Load16xU32(q *[8]uint64, src0, src1, src2, src3 []byte) {
 		w[1] = binary.LittleEndian.Uint32(s[4:])
 		w[2] = binary.LittleEndian.Uint32(s[8:])
 		w[3] = binary.LittleEndian.Uint32(s[12:])
-		a.InterleaveIn(&q[i], &q[i+4], w[:])
+		InterleaveIn(&q[i], &q[i+4], w[:])
 	}
-	a.Ortho(q[:])
+	Ortho(q[:])
 }
 
-func (a *Impl64) Store4xU32(dst []byte, q *[8]uint64) {
+func Store4xU32(dst []byte, q *[8]uint64) {
 	var w [4]uint32
 
-	a.Ortho(q[:])
-	a.InterleaveOut(w[:], q[0], q[4])
+	Ortho(q[:])
+	InterleaveOut(w[:], q[0], q[4])
 	binary.LittleEndian.PutUint32(dst[:], w[0])
 	binary.LittleEndian.PutUint32(dst[4:], w[1])
 	binary.LittleEndian.PutUint32(dst[8:], w[2])
 	binary.LittleEndian.PutUint32(dst[12:], w[3])
 }
 
-func (a *Impl64) Store16xU32(dst0, dst1, dst2, dst3 []byte, q *[8]uint64) {
+func Store16xU32(dst0, dst1, dst2, dst3 []byte, q *[8]uint64) {
 	var w [4]uint32
 
 	dst := [][]byte{dst0, dst1, dst2, dst3}
-	a.Ortho(q[:])
+	Ortho(q[:])
 	for i, d := range dst {
-		a.InterleaveOut(w[:], q[i], q[i+4])
+		InterleaveOut(w[:], q[i], q[i+4])
 		binary.LittleEndian.PutUint32(d[:], w[0])
 		binary.LittleEndian.PutUint32(d[4:], w[1])
 		binary.LittleEndian.PutUint32(d[8:], w[2])
@@ -492,7 +488,6 @@ func memwipeU64(s []uint64) {
 }
 
 type block struct {
-	Impl64
 	skExp     [120]uint64
 	numRounds int
 }
@@ -504,17 +499,17 @@ func (b *block) BlockSize() int {
 func (b *block) Encrypt(dst, src []byte) {
 	var q [8]uint64
 
-	b.Load4xU32(&q, src[:])
-	b.Impl64.Encrypt(b.numRounds, b.skExp[:], &q)
-	b.Store4xU32(dst[:], &q)
+	Load4xU32(&q, src[:])
+	encrypt(b.numRounds, b.skExp[:], &q)
+	Store4xU32(dst[:], &q)
 }
 
 func (b *block) Decrypt(dst, src []byte) {
 	var q [8]uint64
 
-	b.Load4xU32(&q, src[:])
-	b.Impl64.Decrypt(b.numRounds, b.skExp[:], &q)
-	b.Store4xU32(dst[:], &q)
+	Load4xU32(&q, src[:])
+	decrypt(b.numRounds, b.skExp[:], &q)
+	Store4xU32(dst[:], &q)
 }
 
 func (b *block) Reset() {
@@ -527,8 +522,8 @@ func NewCipher(key []byte) cipher.Block {
 	defer memwipeU64(skey[:])
 
 	b := new(block)
-	b.numRounds = b.Keysched(skey[:], key)
-	b.SkeyExpand(b.skExp[:], b.numRounds, skey[:])
+	b.numRounds = Keysched(skey[:], key)
+	SkeyExpand(b.skExp[:], b.numRounds, skey[:])
 	runtime.SetFinalizer(b, (*block).Reset)
 
 	return b

@@ -23,7 +23,7 @@
 
 package ct64
 
-func (a *Impl64) InvSbox(q *[8]uint64) {
+func InvSbox(q *[8]uint64) {
 	// See ct32/Impl32.InvSbox(). This is the natural extension
 	// to 64-bit registers.
 	var q0, q1, q2, q3, q4, q5, q6, q7 uint64
@@ -45,7 +45,7 @@ func (a *Impl64) InvSbox(q *[8]uint64) {
 	q[1] = q3 ^ q6 ^ q0
 	q[0] = q2 ^ q5 ^ q7
 
-	a.Sbox(q)
+	Sbox(q)
 
 	q0 = ^q[0]
 	q1 = ^q[1]
@@ -65,7 +65,7 @@ func (a *Impl64) InvSbox(q *[8]uint64) {
 	q[0] = q2 ^ q5 ^ q7
 }
 
-func (a *Impl64) InvShiftRows(q *[8]uint64) {
+func InvShiftRows(q *[8]uint64) {
 	for i, x := range q {
 		q[i] = (x & 0x000000000000FFFF) |
 			((x & 0x000000000FFF0000) << 4) |
@@ -77,7 +77,7 @@ func (a *Impl64) InvShiftRows(q *[8]uint64) {
 	}
 }
 
-func (a *Impl64) InvMixColumns(q *[8]uint64) {
+func InvMixColumns(q *[8]uint64) {
 	q0 := q[0]
 	q1 := q[1]
 	q2 := q[2]
@@ -105,15 +105,15 @@ func (a *Impl64) InvMixColumns(q *[8]uint64) {
 	q[7] = q4 ^ q5 ^ q6 ^ r4 ^ r6 ^ r7 ^ rotr32(q4^q5^q7^r4^r7)
 }
 
-func (a *Impl64) Decrypt(numRounds int, skey []uint64, q *[8]uint64) {
-	a.AddRoundKey(q, skey[numRounds<<3:])
+func decrypt(numRounds int, skey []uint64, q *[8]uint64) {
+	AddRoundKey(q, skey[numRounds<<3:])
 	for u := numRounds - 1; u > 0; u-- {
-		a.InvShiftRows(q)
-		a.InvSbox(q)
-		a.AddRoundKey(q, skey[u<<3:])
-		a.InvMixColumns(q)
+		InvShiftRows(q)
+		InvSbox(q)
+		AddRoundKey(q, skey[u<<3:])
+		InvMixColumns(q)
 	}
-	a.InvShiftRows(q)
-	a.InvSbox(q)
-	a.AddRoundKey(q, skey)
+	InvShiftRows(q)
+	InvSbox(q)
+	AddRoundKey(q, skey)
 }

@@ -23,7 +23,7 @@
 
 package ct32
 
-func (a *Impl32) ShiftRows(q *[8]uint32) {
+func ShiftRows(q *[8]uint32) {
 	for i, x := range q {
 		q[i] = (x & 0x000000FF) |
 			((x & 0x0000FC00) >> 2) | ((x & 0x00000300) << 6) |
@@ -32,7 +32,7 @@ func (a *Impl32) ShiftRows(q *[8]uint32) {
 	}
 }
 
-func (a *Impl32) MixColumns(q *[8]uint32) {
+func MixColumns(q *[8]uint32) {
 	var q0, q1, q2, q3, q4, q5, q6, q7 uint32
 	var r0, r1, r2, r3, r4, r5, r6, r7 uint32
 
@@ -63,15 +63,15 @@ func (a *Impl32) MixColumns(q *[8]uint32) {
 	q[7] = q6 ^ r6 ^ r7 ^ rotr16(q7^r7)
 }
 
-func (a *Impl32) Encrypt(numRounds int, skey []uint32, q *[8]uint32) {
-	a.AddRoundKey(q, skey)
+func encrypt(numRounds int, skey []uint32, q *[8]uint32) {
+	AddRoundKey(q, skey)
 	for u := 1; u < numRounds; u++ {
-		a.Sbox(q)
-		a.ShiftRows(q)
-		a.MixColumns(q)
-		a.AddRoundKey(q, skey[u<<3:])
+		Sbox(q)
+		ShiftRows(q)
+		MixColumns(q)
+		AddRoundKey(q, skey[u<<3:])
 	}
-	a.Sbox(q)
-	a.ShiftRows(q)
-	a.AddRoundKey(q, skey[numRounds<<3:])
+	Sbox(q)
+	ShiftRows(q)
+	AddRoundKey(q, skey[numRounds<<3:])
 }
