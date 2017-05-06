@@ -26,16 +26,17 @@ package bsaes
 import (
 	"crypto/cipher"
 	"errors"
-	"unsafe"
+	"math"
 
 	"git.schwanenlied.me/yawning/bsaes.git/ct32"
 	"git.schwanenlied.me/yawning/bsaes.git/ct64"
 )
 
-var pointerSize = 8
+var ctor = ct64.NewCipher
 
-// NewCipher creates and returns a new cipher.Block.  The key argument should be
-// the AES key, either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// NewCipher creates and returns a new cipher.Block.  The key argument should
+// be the AES key, either 16, 24, or 32 bytes to select AES-128, AES-192, or
+// AES-256.
 func NewCipher(key []byte) (cipher.Block, error) {
 	switch len(key) {
 	case 16, 24, 32:
@@ -43,19 +44,19 @@ func NewCipher(key []byte) (cipher.Block, error) {
 		return nil, errors.New("aes: Invalid key size")
 	}
 
-	switch pointerSize {
-	case 4:
-		return ct32.NewCipher(key), nil
-	case 8:
-		return ct64.NewCipher(key), nil
-	}
-
-	// This could default to the 32 bit code, but really, what the fuck are
-	// you running this on?
-	panic("bsaes: unsupported pointer size")
+	return ctor(key), nil
 }
 
 func init() {
-	var foo uintptr
-	pointerSize = int(unsafe.Sizeof(foo))
+	// Fucking appengine doesn't have `unsafe`, so derive based off uintptr.
+	// It's retarded that this isn't a constant in runtime or something.
+	maxUintptr := uint64(^uintptr(0))
+	switch maxUintptr {
+	case math.MaxUint32:
+		ctor = ct32.NewCipher
+	case math.MaxUint64:
+		ctor = ct64.NewCipher
+	default:
+		panic("bsaes: unsupported architecture")
+	}
 }
