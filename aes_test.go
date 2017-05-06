@@ -9,9 +9,25 @@ package bsaes
 
 import (
 	"bytes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/hex"
 	"testing"
+
+	"git.schwanenlied.me/yawning/bsaes.git/ct32"
+	"git.schwanenlied.me/yawning/bsaes.git/ct64"
+)
+
+type Impl struct {
+	name string
+	ctor func([]byte) cipher.Block
+}
+
+var (
+	implCt32 = &Impl{"ct32", ct32.NewCipher}
+	implCt64 = &Impl{"ct64", ct64.NewCipher}
+
+	impls = []*Impl{implCt32, implCt64}
 )
 
 // The test vectors are shamelessly stolen from NIST Special Pub. 800-38A,
@@ -92,31 +108,31 @@ var ecbVectors = []struct {
 }
 
 func TestECB_SP800_38A(t *testing.T) {
-	for i, vec := range ecbVectors {
-		key, err := hex.DecodeString(vec.key[:])
-		if err != nil {
-			t.Fatal(err)
-		}
-		pt, err := hex.DecodeString(vec.plaintext[:])
-		if err != nil {
-			t.Fatal(err)
-		}
-		ct, err := hex.DecodeString(vec.ciphertext[:])
-		if err != nil {
-			t.Fatal(err)
-		}
+	for _, impl := range impls {
+		t.Logf("Testing implementation: %v\n", impl.name)
+		for i, vec := range ecbVectors {
+			key, err := hex.DecodeString(vec.key[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			pt, err := hex.DecodeString(vec.plaintext[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			ct, err := hex.DecodeString(vec.ciphertext[:])
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		b, err := NewCipher(key)
-		if err != nil {
-			t.Fatal(err)
+			b := impl.ctor(key)
+
+			var dst [16]byte
+			b.Encrypt(dst[:], pt)
+			assertEqual(t, i, ct, dst[:])
+
+			b.Decrypt(dst[:], ct)
+			assertEqual(t, i, pt, dst[:])
 		}
-
-		var dst [16]byte
-		b.Encrypt(dst[:], pt)
-		assertEqual(t, i, ct, dst[:])
-
-		b.Decrypt(dst[:], ct)
-		assertEqual(t, i, pt, dst[:])
 	}
 }
 
@@ -136,7 +152,7 @@ func assertEqual(t *testing.T, idx int, expected, actual []byte) {
 
 var benchOutput [16]byte
 
-func doBenchECB(b *testing.B, ksz int) {
+func doBenchECB(b *testing.B, impl *Impl, ksz int) {
 	var src, dst, check [16]byte
 
 	key := make([]byte, ksz)
@@ -145,12 +161,9 @@ func doBenchECB(b *testing.B, ksz int) {
 		b.Fail()
 	}
 
-	blk, err := NewCipher(key[:])
-	if err != nil {
-		b.Error(err)
-		b.Fatal()
-	}
+	blk := impl.ctor(key[:])
 
+	b.SetParallelism(1) // We want per-core figures.
 	b.SetBytes(16)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -158,8 +171,8 @@ func doBenchECB(b *testing.B, ksz int) {
 		blk.Encrypt(dst[:], src[:])
 		b.StopTimer()
 
+		// Check forward/back because, why not.
 		blk.Decrypt(check[:], dst[:])
-
 		if !bytes.Equal(check[:], src[:]) {
 			b.Fatalf("decrypt produced invalid output")
 		}
@@ -168,14 +181,26 @@ func doBenchECB(b *testing.B, ksz int) {
 	copy(benchOutput[:], dst[:])
 }
 
-func BenchmarkECB128(b *testing.B) {
-	doBenchECB(b, 16)
+func BenchmarkECB128_ct32(b *testing.B) {
+	doBenchECB(b, implCt32, 16)
 }
 
-func BenchmarkECB192(b *testing.B) {
-	doBenchECB(b, 24)
+func BenchmarkECB192_ct32(b *testing.B) {
+	doBenchECB(b, implCt32, 24)
 }
 
-func BenchmarkECB256(b *testing.B) {
-	doBenchECB(b, 32)
+func BenchmarkECB256_ct32(b *testing.B) {
+	doBenchECB(b, implCt32, 32)
+}
+
+func BenchmarkECB128_ct64(b *testing.B) {
+	doBenchECB(b, implCt64, 16)
+}
+
+func BenchmarkECB192_ct64(b *testing.B) {
+	doBenchECB(b, implCt64, 24)
+}
+
+func BenchmarkECB256_ct64(b *testing.B) {
+	doBenchECB(b, implCt64, 32)
 }
