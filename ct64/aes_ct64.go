@@ -490,7 +490,7 @@ func memwipeU64(s []uint64) {
 }
 
 type block struct {
-	modes.GcmAbleImpl
+	modes.GCMAbleImpl
 
 	skExp     [120]uint64
 	numRounds int

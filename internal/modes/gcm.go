@@ -27,10 +27,10 @@ import (
 	"errors"
 )
 
-// GcmAbleImpl is a `crypto/cipher.gcmAble` instantiation that will always
+// GCMAbleImpl is a `crypto/cipher.gcmAble` instantiation that will always
 // return an error.
-type GcmAbleImpl struct{}
+type GCMAbleImpl struct{}
 
-func (m *GcmAbleImpl) NewGCM(size int) (cipher.AEAD, error) {
+func (m *GCMAbleImpl) NewGCM(size int) (cipher.AEAD, error) {
 	return nil, errors.New("bsaes/NewGCM: GHASH may be vartime")
 }
