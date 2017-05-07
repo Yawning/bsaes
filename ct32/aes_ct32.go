@@ -28,7 +28,6 @@ package ct32
 import (
 	"crypto/cipher"
 	"encoding/binary"
-	"runtime"
 
 	"git.schwanenlied.me/yawning/bsaes.git/internal/modes"
 )
@@ -397,6 +396,7 @@ type block struct {
 
 	skExp     [120]uint32
 	numRounds int
+	wasReset  bool
 }
 
 func (b *block) BlockSize() int {
@@ -410,6 +410,10 @@ func (b *block) Stride() int {
 func (b *block) Encrypt(dst, src []byte) {
 	var q [8]uint32
 
+	if b.wasReset {
+		panic("bsaes/ct32: Encrypt() called after Reset()")
+	}
+
 	Load4xU32(&q, src)
 	encrypt(b.numRounds, b.skExp[:], &q)
 	Store4xU32(dst, &q)
@@ -417,6 +421,10 @@ func (b *block) Encrypt(dst, src []byte) {
 
 func (b *block) Decrypt(dst, src []byte) {
 	var q [8]uint32
+
+	if b.wasReset {
+		panic("bsaes/ct32: Decrypt() called after Reset()")
+	}
 
 	Load4xU32(&q, src)
 	decrypt(b.numRounds, b.skExp[:], &q)
@@ -426,13 +434,20 @@ func (b *block) Decrypt(dst, src []byte) {
 func (b *block) BulkECBEncrypt(dst, src []byte) {
 	var q [8]uint32
 
+	if b.wasReset {
+		panic("bsaes/ct32: BulkECBEncrypt() called after Reset()")
+	}
+
 	Load8xU32(&q, src[0:], src[16:])
 	encrypt(b.numRounds, b.skExp[:], &q)
 	Store8xU32(dst[0:], dst[16:], &q)
 }
 
 func (b *block) Reset() {
-	memwipeU32(b.skExp[:])
+	if !b.wasReset {
+		b.wasReset = true
+		memwipeU32(b.skExp[:])
+	}
 }
 
 // NewCipher creates and returns a new cipher.Block, backed by a Impl32.
@@ -443,7 +458,6 @@ func NewCipher(key []byte) cipher.Block {
 	b := new(block)
 	b.numRounds = Keysched(skey[:], key)
 	SkeyExpand(b.skExp[:], b.numRounds, skey[:])
-	runtime.SetFinalizer(b, (*block).Reset)
 
 	b.CTRInit(b)
 

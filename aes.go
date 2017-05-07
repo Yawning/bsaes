@@ -27,12 +27,17 @@ import (
 	"crypto/cipher"
 	"errors"
 	"math"
+	"runtime"
 
 	"git.schwanenlied.me/yawning/bsaes.git/ct32"
 	"git.schwanenlied.me/yawning/bsaes.git/ct64"
 )
 
 var ctor = ct64.NewCipher
+
+type resetAble interface {
+	Reset()
+}
 
 // NewCipher creates and returns a new cipher.Block.  The key argument should
 // be the AES key, either 16, 24, or 32 bytes to select AES-128, AES-192, or
@@ -44,7 +49,11 @@ func NewCipher(key []byte) (cipher.Block, error) {
 		return nil, errors.New("aes: Invalid key size")
 	}
 
-	return ctor(key), nil
+	blk := ctor(key)
+	r := blk.(resetAble)
+	runtime.SetFinalizer(r, (resetAble).Reset)
+
+	return blk, nil
 }
 
 func init() {
