@@ -491,6 +491,7 @@ func memwipeU64(s []uint64) {
 
 type block struct {
 	modes.GCMAbleImpl
+	modes.CTRAbleImpl
 
 	skExp     [120]uint64
 	numRounds int
@@ -498,6 +499,10 @@ type block struct {
 
 func (b *block) BlockSize() int {
 	return 16
+}
+
+func (b *block) Stride() int {
+	return 4
 }
 
 func (b *block) Encrypt(dst, src []byte) {
@@ -516,6 +521,14 @@ func (b *block) Decrypt(dst, src []byte) {
 	Store4xU32(dst[:], &q)
 }
 
+func (b *block) BulkECBEncrypt(dst, src []byte) {
+	var q [8]uint64
+
+	Load16xU32(&q, src[0:], src[16:], src[32:], src[48:])
+	encrypt(b.numRounds, b.skExp[:], &q)
+	Store16xU32(dst[0:], dst[16:], dst[32:], dst[48:], &q)
+}
+
 func (b *block) Reset() {
 	memwipeU64(b.skExp[:])
 }
@@ -529,6 +542,8 @@ func NewCipher(key []byte) cipher.Block {
 	b.numRounds = Keysched(skey[:], key)
 	SkeyExpand(b.skExp[:], b.numRounds, skey[:])
 	runtime.SetFinalizer(b, (*block).Reset)
+
+	b.CTRInit(b)
 
 	return b
 }

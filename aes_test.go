@@ -9,9 +9,11 @@ package bsaes
 
 import (
 	"bytes"
+	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/hex"
+	"math"
 	"testing"
 
 	"git.schwanenlied.me/yawning/bsaes.git/ct32"
@@ -27,7 +29,8 @@ var (
 	implCt32 = &Impl{"ct32", ct32.NewCipher}
 	implCt64 = &Impl{"ct64", ct64.NewCipher}
 
-	impls = []*Impl{implCt32, implCt64}
+	impls      = []*Impl{implCt32, implCt64}
+	nativeImpl = implCt64
 )
 
 // The test vectors are shamelessly stolen from NIST Special Pub. 800-38A,
@@ -155,6 +158,113 @@ func TestGCM(t *testing.T) {
 	}
 }
 
+var ctrVectors = []struct {
+	key        string
+	iv         string
+	plaintext  string
+	ciphertext string
+}{
+	// CTR-AES128
+	{
+		"2b7e151628aed2a6abf7158809cf4f3c",
+		"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+		"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+		"874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee",
+	},
+	// CTR-AES192
+	{
+		"8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b",
+		"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+		"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+		"1abc932417521ca24f2b0459fe7e6e0b090339ec0aa6faefd5ccc2c6f4ce8e941e36b26bd1ebc670d1bd1d665620abf74f78a7f6d29809585a97daec58c6b050",
+	},
+	// CTR-AES256
+	{
+		"603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+		"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+		"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+		"601ec313775789a5b7a7f504bbf3d228f443e3ca4d62b59aca84e990cacaf5c52b0930daa23de94ce87017ba2d84988ddfc9c58db67aada613c2dd08457941a6",
+	},
+}
+
+func TestCTR_SP800_38A(t *testing.T) {
+	for _, impl := range impls {
+		t.Logf("Testing implementation: %v\n", impl.name)
+		for i, vec := range ctrVectors {
+			key, err := hex.DecodeString(vec.key[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			iv, err := hex.DecodeString(vec.iv[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			ct, err := hex.DecodeString(vec.ciphertext[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			pt, err := hex.DecodeString(vec.plaintext[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			b := impl.ctor(key)
+			dst := make([]byte, len(ct))
+
+			ctr := cipher.NewCTR(b, iv)
+			ctr.XORKeyStream(dst, pt)
+			assertEqual(t, i, ct, dst)
+		}
+	}
+}
+
+func TestCTR_keystream(t *testing.T) {
+	var iv [16]byte
+
+	for _, impl := range impls {
+		strideSz := 0
+		switch impl.name {
+		case "ct32":
+			strideSz = 2 * 16
+		case "ct64":
+			strideSz = 4 * 16
+		default:
+			panic("unable to determine stride")
+		}
+
+		key := make([]byte, 16)
+		if _, err := rand.Read(key[:]); err != nil {
+			t.Error(err)
+			t.Fail()
+		}
+
+		for sz := 0; sz <= strideSz; sz++ {
+			blk := impl.ctor(key[:])
+			ctr := cipher.NewCTR(blk, iv[:])
+
+			refBlk, _ := aes.NewCipher(key[:])
+			refCtr := cipher.NewCTR(refBlk, iv[:])
+
+			n := sz + strideSz + sz
+			src := make([]byte, n)
+			dst := make([]byte, n)
+			check := make([]byte, n)
+
+			if _, err := rand.Read(src[:]); err != nil {
+				t.Error(err)
+				t.Fail()
+			}
+
+			ctr.XORKeyStream(dst, src[:sz])
+			ctr.XORKeyStream(dst[sz:], src[sz:sz+strideSz])
+			ctr.XORKeyStream(dst[sz+strideSz:], src[sz+strideSz:])
+
+			refCtr.XORKeyStream(check, src)
+			assertEqual(t, sz, check, dst)
+		}
+	}
+}
+
 func assertEqual(t *testing.T, idx int, expected, actual []byte) {
 	if !bytes.Equal(expected, actual) {
 		for i, v := range actual {
@@ -169,10 +279,14 @@ func assertEqual(t *testing.T, idx int, expected, actual []byte) {
 	}
 }
 
-var benchOutput [16]byte
+var ecbBenchOutput [16]byte
 
 func doBenchECB(b *testing.B, impl *Impl, ksz int) {
 	var src, dst, check [16]byte
+
+	if testing.Short() && !implIsNative(impl) {
+		b.SkipNow()
+	}
 
 	key := make([]byte, ksz)
 	if _, err := rand.Read(key[:]); err != nil {
@@ -197,7 +311,7 @@ func doBenchECB(b *testing.B, impl *Impl, ksz int) {
 		}
 		copy(src[:], dst[:])
 	}
-	copy(benchOutput[:], dst[:])
+	copy(ecbBenchOutput[:], dst[:])
 }
 
 func BenchmarkECB128_ct32(b *testing.B) {
@@ -222,4 +336,98 @@ func BenchmarkECB192_ct64(b *testing.B) {
 
 func BenchmarkECB256_ct64(b *testing.B) {
 	doBenchECB(b, implCt64, 32)
+}
+
+var ctrBenchOutput []byte
+
+func doBenchCTR(b *testing.B, impl *Impl, ksz, n int) {
+	var iv [16]byte
+
+	if testing.Short() && !implIsNative(impl) {
+		b.SkipNow()
+	}
+
+	key := make([]byte, ksz)
+	if _, err := rand.Read(key[:]); err != nil {
+		b.Error(err)
+		b.Fail()
+	}
+
+	blk := impl.ctor(key[:])
+	ctr := cipher.NewCTR(blk, iv[:])
+
+	src := make([]byte, n)
+	dst := make([]byte, n)
+
+	b.SetParallelism(1) // We want per-core figures.
+	b.SetBytes(int64(n))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ctr.XORKeyStream(dst, src)
+	}
+	ctrBenchOutput = dst
+}
+
+func BenchmarkCTR128_ct32_16(b *testing.B) {
+	doBenchCTR(b, implCt32, 16, 16)
+}
+
+func BenchmarkCTR128_ct32_64(b *testing.B) {
+	doBenchCTR(b, implCt32, 16, 64)
+}
+
+func BenchmarkCTR128_ct32_256(b *testing.B) {
+	doBenchCTR(b, implCt32, 16, 256)
+}
+
+func BenchmarkCTR128_ct32_1024(b *testing.B) {
+	doBenchCTR(b, implCt32, 16, 1024)
+}
+
+func BenchmarkCTR128_ct32_8192(b *testing.B) {
+	doBenchCTR(b, implCt32, 16, 8192)
+}
+
+func BenchmarkCTR128_ct32_16384(b *testing.B) {
+	doBenchCTR(b, implCt32, 16, 16384)
+}
+
+func BenchmarkCTR128_ct64_16(b *testing.B) {
+	doBenchCTR(b, implCt64, 16, 16)
+}
+
+func BenchmarkCTR128_ct64_64(b *testing.B) {
+	doBenchCTR(b, implCt64, 16, 64)
+}
+
+func BenchmarkCTR128_ct64_256(b *testing.B) {
+	doBenchCTR(b, implCt64, 16, 256)
+}
+
+func BenchmarkCTR128_ct64_1024(b *testing.B) {
+	doBenchCTR(b, implCt64, 16, 1024)
+}
+
+func BenchmarkCTR128_ct64_8192(b *testing.B) {
+	doBenchCTR(b, implCt64, 16, 8192)
+}
+
+func BenchmarkCTR128_ct64_16384(b *testing.B) {
+	doBenchCTR(b, implCt64, 16, 16384)
+}
+
+func implIsNative(impl *Impl) bool {
+	return impl == nativeImpl
+}
+
+func init() {
+	maxUintptr := uint64(^uintptr(0))
+	switch maxUintptr {
+	case math.MaxUint32:
+		nativeImpl = implCt32
+	case math.MaxUint64:
+		nativeImpl = implCt64
+	default:
+		panic("bsaes: unsupported architecture")
+	}
 }
