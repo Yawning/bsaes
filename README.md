@@ -18,13 +18,13 @@ Features:
 
  * 32 bit and 64 bit variants, with the appropriate one selected at runtime.
 
- * `ctrAble` support for less-slow CTR-AES mode, leveraging the fact that the
-   implementation is bitsliced.
+ * Provides `crypto/cipher.Block`.
 
- * Compatible with `crypto/cipher` methods that take a `crypto/cipher.Block`
-   that are safe to use.  The GHASH provided by `crypto/cipher` is not
-   guaranteed to be constant time, so attempting to combine bsaes with it will
-   result in a runtime error.
+ * `crypto/cipher.ctrAble` support for less-slow CTR-AES mode, leveraging the
+   fact that the implementation is bitsliced.
+
+ * `crypto/cipher.gcmAble` support that returns a runtime error, because any
+   platform that requires `bsaes` does not have a constant time GHASH.
 
  * The raw guts of the implementations provided as sub-packages, for people
    to use to implement [other things](https://git.schwanenlied.me/yawning/aez).
@@ -42,6 +42,3 @@ Benchmarks:
 
 All numbers taken on an Intel i7-5600U with Turbo Boost disabled, running on
 linux/amd64.
-
-ps: The `bs` stand for bullshit, because the runtime library really should be
-better.
