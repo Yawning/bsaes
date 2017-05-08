@@ -33,12 +33,12 @@ Benchmarks:
 
 | Primitive           | Version | ns/op  | MB/s   |
 | ------------------- | :-----: | -----: | -----: |
-| ECB-AES128          | ct32    | 911    | 17.56  |
-| ECB-AES256          | ct32    | 1242   | 12.88  |
-| CTR-AES128 (16 KiB) | ct32    | 468683 | 34.96  |
-| ECB-AES128          | ct64    | 1028   | 15.56  |
-| ECB-AES256          | ct64    | 1326   | 12.06  |
-| CTR-AES128 (16 KiB) | ct64    | 294952 | 55.55  |
+| ECB-AES128          | ct32    | 760    | 21.03  |
+| ECB-AES256          | ct32    | 1054   | 15.18  |
+| CTR-AES128 (16 KiB) | ct32    | 376825 | 43.48  |
+| ECB-AES128          | ct64    | 836    | 19.12  |
+| ECB-AES256          | ct64    | 1098   | 14.56  |
+| CTR-AES128 (16 KiB) | ct64    | 235429 | 69.59  |
 
 All numbers taken on an Intel i7-5600U with Turbo Boost disabled, running on
 linux/amd64.
