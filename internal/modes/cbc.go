@@ -22,10 +22,7 @@
 
 package modes
 
-import (
-	"crypto/cipher"
-	"runtime"
-)
+import "crypto/cipher"
 
 func (m *BlockModesImpl) NewCBCDecrypter(iv []byte) cipher.BlockMode {
 	ecb := m.b.(bulkECBAble)
@@ -40,18 +37,13 @@ type cbcDecImpl struct {
 	ecb bulkECBAble
 	iv  []byte
 	buf []byte
-	tmp []byte
+	tmp [blockSize]byte
 
-	blockSize int
-	stride    int
-}
-
-func (c *cbcDecImpl) Reset() {
-	c.ecb.Reset()
+	stride int
 }
 
 func (c *cbcDecImpl) BlockSize() int {
-	return c.blockSize
+	return blockSize
 }
 
 func (c *cbcDecImpl) CryptBlocks(dst, src []byte) {
@@ -59,31 +51,31 @@ func (c *cbcDecImpl) CryptBlocks(dst, src []byte) {
 	if sLen == 0 {
 		return
 	}
-	n := sLen / c.blockSize
+	n := sLen / blockSize
 
 	for n >= c.stride { // Stride blocks at a time.
-		copy(c.iv[c.blockSize:], src)
-		copy(c.tmp, src[(c.stride-1)*c.blockSize:])
+		copy(c.iv[blockSize:], src)
+		copy(c.tmp[:], src[(c.stride-1)*blockSize:])
 
 		c.ecb.BulkDecrypt(c.buf, src)
 		for i, v := range c.iv {
 			dst[i] = c.buf[i] ^ v
 		}
 
-		copy(c.iv, c.tmp)
-		dst, src = dst[c.stride*c.blockSize:], src[c.stride*c.blockSize:]
+		copy(c.iv, c.tmp[:])
+		dst, src = dst[c.stride*blockSize:], src[c.stride*blockSize:]
 		n -= c.stride
 	}
 	for n > 0 { // Process the remainder one block at a time.
-		copy(c.tmp, src[:c.blockSize])
+		copy(c.tmp[:], src[:blockSize])
 
-		c.ecb.Decrypt(c.buf, src[:c.blockSize])
-		for i, v := range c.iv[:c.blockSize] {
+		c.ecb.Decrypt(c.buf, src[:blockSize])
+		for i, v := range c.iv[:blockSize] {
 			dst[i] = c.buf[i] ^ v
 		}
 
-		copy(c.iv, c.tmp)
-		dst, src = dst[c.blockSize:], src[c.blockSize:]
+		copy(c.iv, c.tmp[:])
+		dst, src = dst[blockSize:], src[blockSize:]
 		n--
 	}
 }
@@ -91,14 +83,10 @@ func (c *cbcDecImpl) CryptBlocks(dst, src []byte) {
 func newCbcDecImpl(ecb bulkECBAble, iv []byte) cipher.BlockMode {
 	c := new(cbcDecImpl)
 	c.ecb = ecb
-	c.blockSize = ecb.BlockSize()
 	c.stride = ecb.Stride()
-	c.iv = make([]byte, c.stride*c.blockSize)
+	c.iv = make([]byte, c.stride*blockSize)
 	copy(c.iv, iv)
-	c.buf = make([]byte, c.stride*c.blockSize)
-	c.tmp = make([]byte, c.blockSize)
-
-	runtime.SetFinalizer(c, (*cbcDecImpl).Reset)
+	c.buf = make([]byte, c.stride*blockSize)
 
 	return c
 }

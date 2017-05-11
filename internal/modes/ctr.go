@@ -38,16 +38,14 @@ func (m *BlockModesImpl) NewCTR(iv []byte) cipher.Stream {
 
 type ctrImpl struct {
 	ecb bulkECBAble
-	ctr []byte
+	ctr [blockSize]byte
 	buf []byte
 	idx int
 
-	blockSize int
-	stride    int
+	stride int
 }
 
 func (c *ctrImpl) Reset() {
-	c.ecb.Reset()
 	for i := range c.buf {
 		c.buf[i] = 0
 	}
@@ -75,10 +73,10 @@ func (c *ctrImpl) XORKeyStream(dst, src []byte) {
 
 func (c *ctrImpl) generateKeyStream() {
 	for i := 0; i < c.stride; i++ {
-		copy(c.buf[i*c.blockSize:], c.ctr)
+		copy(c.buf[i*blockSize:], c.ctr[:])
 
 		// Increment counter.
-		for j := c.blockSize; j > 0; j-- {
+		for j := blockSize; j > 0; j-- {
 			c.ctr[j-1]++
 			if c.ctr[j-1] != 0 {
 				break
@@ -91,11 +89,9 @@ func (c *ctrImpl) generateKeyStream() {
 func newCtrImpl(ecb bulkECBAble, iv []byte) cipher.Stream {
 	c := new(ctrImpl)
 	c.ecb = ecb
-	c.blockSize = ecb.BlockSize()
 	c.stride = ecb.Stride()
-	c.ctr = make([]byte, c.blockSize)
-	copy(c.ctr, iv)
-	c.buf = make([]byte, c.stride*c.blockSize)
+	copy(c.ctr[:], iv)
+	c.buf = make([]byte, c.stride*blockSize)
 	c.idx = len(c.buf)
 
 	runtime.SetFinalizer(c, (*ctrImpl).Reset)

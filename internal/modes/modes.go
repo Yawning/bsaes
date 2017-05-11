@@ -22,10 +22,9 @@
 
 package modes
 
-import (
-	"crypto/cipher"
-	"errors"
-)
+import "crypto/cipher"
+
+const blockSize = 16 // Always AES.
 
 type bulkECBAble interface {
 	cipher.Block
@@ -55,8 +54,4 @@ type BlockModesImpl struct {
 
 func (m *BlockModesImpl) Init(b cipher.Block) {
 	m.b = b
-}
-
-func (m *BlockModesImpl) NewGCM(size int) (cipher.AEAD, error) {
-	return nil, errors.New("bsaes/NewGCM: GHASH may be vartime")
 }

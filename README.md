@@ -24,8 +24,8 @@ Features:
 
  * `crypto/cipher.cbcDecAble` support for less-slow CBC-AES decryption.
 
- * `crypto/cipher.gcmAble` support that returns a runtime error, because any
-   platform that requires `bsaes` does not have a constant time GHASH.
+ * `crypto/cipher.gcmAble` support for less-slow GCM-AES.  This includes
+   a constant time GHASH.
 
  * The raw guts of the implementations provided as sub-packages, for people
    to use to implement [other things](https://git.schwanenlied.me/yawning/aez).
