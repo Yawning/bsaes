@@ -74,20 +74,17 @@ func (c *cbcDecImpl) CryptBlocks(dst, src []byte) {
 		dst, src = dst[c.stride*c.blockSize:], src[c.stride*c.blockSize:]
 		n -= c.stride
 	}
-	if n > 0 { // Process the remainder one block at a time.
-		b := c.ecb.(cipher.Block)
-		for n > 0 {
-			copy(c.tmp, src[:c.blockSize])
+	for n > 0 { // Process the remainder one block at a time.
+		copy(c.tmp, src[:c.blockSize])
 
-			b.Decrypt(c.buf, src[:c.blockSize])
-			for i, v := range c.iv[:c.blockSize] {
-				dst[i] = c.buf[i] ^ v
-			}
-
-			copy(c.iv, c.tmp)
-			dst, src = dst[c.blockSize:], src[c.blockSize:]
-			n--
+		c.ecb.Decrypt(c.buf, src[:c.blockSize])
+		for i, v := range c.iv[:c.blockSize] {
+			dst[i] = c.buf[i] ^ v
 		}
+
+		copy(c.iv, c.tmp)
+		dst, src = dst[c.blockSize:], src[c.blockSize:]
+		n--
 	}
 }
 

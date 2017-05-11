@@ -28,8 +28,7 @@ import (
 )
 
 type bulkECBAble interface {
-	// BlockSize returns the block size in bytes.
-	BlockSize() int
+	cipher.Block
 
 	// Stride returns the number of BlockSize-ed blocks that should be passed
 	// to BulkEncrypt.
