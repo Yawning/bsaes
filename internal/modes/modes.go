@@ -27,10 +27,37 @@ import (
 	"errors"
 )
 
-// GCMAbleImpl is a `crypto/cipher.gcmAble` instantiation that will always
-// return an error.
-type GCMAbleImpl struct{}
+type bulkECBAble interface {
+	// BlockSize returns the block size in bytes.
+	BlockSize() int
 
-func (m *GCMAbleImpl) NewGCM(size int) (cipher.AEAD, error) {
+	// Stride returns the number of BlockSize-ed blocks that should be passed
+	// to BulkEncrypt.
+	Stride() int
+
+	// Reset clears the block cipher state such that key material no longer
+	// appears in process memory.
+	Reset()
+
+	// Encrypt encrypts the Stride blocks of plaintext src, and places the
+	// resulting output in the ciphertext dst.
+	BulkEncrypt(dst, src []byte)
+
+	// BulkECBDecrypt decrypts the Stride blocks of plaintext src,
+	// and places the resulting output in the ciphertext dst.
+	BulkDecrypt(dst, src []byte)
+}
+
+// BlockModesImpl is a collection of unexported `crypto/cipher` block cipher
+// mode special case implementations.
+type BlockModesImpl struct {
+	b cipher.Block
+}
+
+func (m *BlockModesImpl) Init(b cipher.Block) {
+	m.b = b
+}
+
+func (m *BlockModesImpl) NewGCM(size int) (cipher.AEAD, error) {
 	return nil, errors.New("bsaes/NewGCM: GHASH may be vartime")
 }

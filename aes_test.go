@@ -13,6 +13,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"math"
 	"testing"
 
@@ -284,10 +285,6 @@ var ecbBenchOutput [16]byte
 func doBenchECB(b *testing.B, impl *Impl, ksz int) {
 	var src, dst, check [16]byte
 
-	if testing.Short() && !implIsNative(impl) {
-		b.SkipNow()
-	}
-
 	key := make([]byte, ksz)
 	if _, err := rand.Read(key[:]); err != nil {
 		b.Error(err)
@@ -296,7 +293,6 @@ func doBenchECB(b *testing.B, impl *Impl, ksz int) {
 
 	blk := impl.ctor(key[:])
 
-	b.SetParallelism(1) // We want per-core figures.
 	b.SetBytes(16)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -314,38 +310,10 @@ func doBenchECB(b *testing.B, impl *Impl, ksz int) {
 	copy(ecbBenchOutput[:], dst[:])
 }
 
-func BenchmarkECB128_ct32(b *testing.B) {
-	doBenchECB(b, implCt32, 16)
-}
-
-func BenchmarkECB192_ct32(b *testing.B) {
-	doBenchECB(b, implCt32, 24)
-}
-
-func BenchmarkECB256_ct32(b *testing.B) {
-	doBenchECB(b, implCt32, 32)
-}
-
-func BenchmarkECB128_ct64(b *testing.B) {
-	doBenchECB(b, implCt64, 16)
-}
-
-func BenchmarkECB192_ct64(b *testing.B) {
-	doBenchECB(b, implCt64, 24)
-}
-
-func BenchmarkECB256_ct64(b *testing.B) {
-	doBenchECB(b, implCt64, 32)
-}
-
 var ctrBenchOutput []byte
 
 func doBenchCTR(b *testing.B, impl *Impl, ksz, n int) {
 	var iv [16]byte
-
-	if testing.Short() && !implIsNative(impl) {
-		b.SkipNow()
-	}
 
 	key := make([]byte, ksz)
 	if _, err := rand.Read(key[:]); err != nil {
@@ -359,7 +327,6 @@ func doBenchCTR(b *testing.B, impl *Impl, ksz, n int) {
 	src := make([]byte, n)
 	dst := make([]byte, n)
 
-	b.SetParallelism(1) // We want per-core figures.
 	b.SetBytes(int64(n))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -368,56 +335,35 @@ func doBenchCTR(b *testing.B, impl *Impl, ksz, n int) {
 	ctrBenchOutput = dst
 }
 
-func BenchmarkCTR128_ct32_16(b *testing.B) {
-	doBenchCTR(b, implCt32, 16, 16)
-}
-
-func BenchmarkCTR128_ct32_64(b *testing.B) {
-	doBenchCTR(b, implCt32, 16, 64)
-}
-
-func BenchmarkCTR128_ct32_256(b *testing.B) {
-	doBenchCTR(b, implCt32, 16, 256)
-}
-
-func BenchmarkCTR128_ct32_1024(b *testing.B) {
-	doBenchCTR(b, implCt32, 16, 1024)
-}
-
-func BenchmarkCTR128_ct32_8192(b *testing.B) {
-	doBenchCTR(b, implCt32, 16, 8192)
-}
-
-func BenchmarkCTR128_ct32_16384(b *testing.B) {
-	doBenchCTR(b, implCt32, 16, 16384)
-}
-
-func BenchmarkCTR128_ct64_16(b *testing.B) {
-	doBenchCTR(b, implCt64, 16, 16)
-}
-
-func BenchmarkCTR128_ct64_64(b *testing.B) {
-	doBenchCTR(b, implCt64, 16, 64)
-}
-
-func BenchmarkCTR128_ct64_256(b *testing.B) {
-	doBenchCTR(b, implCt64, 16, 256)
-}
-
-func BenchmarkCTR128_ct64_1024(b *testing.B) {
-	doBenchCTR(b, implCt64, 16, 1024)
-}
-
-func BenchmarkCTR128_ct64_8192(b *testing.B) {
-	doBenchCTR(b, implCt64, 16, 8192)
-}
-
-func BenchmarkCTR128_ct64_16384(b *testing.B) {
-	doBenchCTR(b, implCt64, 16, 16384)
-}
-
 func implIsNative(impl *Impl) bool {
 	return impl == nativeImpl
+}
+
+func doBench(b *testing.B, impl *Impl) {
+	if testing.Short() && !implIsNative(impl) {
+		b.SkipNow()
+	}
+
+	b.SetParallelism(1) // We want per-core figures.
+
+	b.Run("ECB128", func(b *testing.B) { doBenchECB(b, implCt32, 16) })
+	if !testing.Short() { // No one cares about this mode.
+		b.Run("ECB192", func(b *testing.B) { doBenchECB(b, implCt32, 24) })
+	}
+	b.Run("ECB256", func(b *testing.B) { doBenchECB(b, implCt32, 16) })
+
+	for _, sz := range []int{16, 64, 256, 1024, 8192, 16384} {
+		n := fmt.Sprintf("CTR128_%d", sz)
+		b.Run(n, func(b *testing.B) { doBenchCTR(b, impl, 16, sz) })
+	}
+}
+
+func Benchmark_ct32(b *testing.B) {
+	doBench(b, implCt32)
+}
+
+func Benchmark_ct64(b *testing.B) {
+	doBench(b, implCt64)
 }
 
 func init() {

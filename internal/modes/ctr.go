@@ -27,35 +27,8 @@ import (
 	"runtime"
 )
 
-type bulkECBEncryptAble interface {
-	// BlockSize returns the block size in bytes.
-	BlockSize() int
-
-	// Stride returns the number of BlockSize-ed blocks that should be passed
-	// to BulkEncrypt.
-	Stride() int
-
-	// Reset clears the block cipher state such that key material no longer
-	// appears in process memory.
-	Reset()
-
-	// BulkECBEncrypt encrypts the Stride blocks of plaintext src,
-	// and places the resulting output in the ciphertext dst.
-	BulkECBEncrypt(dst, src []byte)
-}
-
-// CTRAbleImpl is a `crypto/cipher.ctrAble` instantiation that uses
-// the bitslicing provided by bsaes
-type CTRAbleImpl struct {
-	b cipher.Block
-}
-
-func (m *CTRAbleImpl) CTRInit(b cipher.Block) {
-	m.b = b
-}
-
-func (m *CTRAbleImpl) NewCTR(iv []byte) cipher.Stream {
-	ecb := m.b.(bulkECBEncryptAble)
+func (m *BlockModesImpl) NewCTR(iv []byte) cipher.Stream {
+	ecb := m.b.(bulkECBAble)
 	if len(iv) != ecb.BlockSize() {
 		panic("bsaes/NewCTR: iv size does not match block size")
 	}
@@ -64,7 +37,7 @@ func (m *CTRAbleImpl) NewCTR(iv []byte) cipher.Stream {
 }
 
 type ctrImpl struct {
-	ecb bulkECBEncryptAble
+	ecb bulkECBAble
 	ctr []byte
 	buf []byte
 	idx int
@@ -112,10 +85,10 @@ func (c *ctrImpl) generateKeyStream() {
 			}
 		}
 	}
-	c.ecb.BulkECBEncrypt(c.buf, c.buf)
+	c.ecb.BulkEncrypt(c.buf, c.buf)
 }
 
-func newCtrImpl(ecb bulkECBEncryptAble, iv []byte) cipher.Stream {
+func newCtrImpl(ecb bulkECBAble, iv []byte) cipher.Stream {
 	c := new(ctrImpl)
 	c.ecb = ecb
 	c.blockSize = ecb.BlockSize()

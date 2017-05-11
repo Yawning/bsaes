@@ -489,8 +489,7 @@ func memwipeU64(s []uint64) {
 }
 
 type block struct {
-	modes.GCMAbleImpl
-	modes.CTRAbleImpl
+	modes.BlockModesImpl
 
 	skExp     [120]uint64
 	numRounds int
@@ -529,15 +528,27 @@ func (b *block) Decrypt(dst, src []byte) {
 	Store4xU32(dst[:], &q)
 }
 
-func (b *block) BulkECBEncrypt(dst, src []byte) {
+func (b *block) BulkEncrypt(dst, src []byte) {
 	var q [8]uint64
 
 	if b.wasReset {
-		panic("bsaes/ct64: BulkECBEncrypt() called after Reset()")
+		panic("bsaes/ct64: BulkEncrypt() called after Reset()")
 	}
 
 	Load16xU32(&q, src[0:], src[16:], src[32:], src[48:])
 	encrypt(b.numRounds, b.skExp[:], &q)
+	Store16xU32(dst[0:], dst[16:], dst[32:], dst[48:], &q)
+}
+
+func (b *block) BulkDecrypt(dst, src []byte) {
+	var q [8]uint64
+
+	if b.wasReset {
+		panic("bsaes/ct64: BulkDecrypt() called after Reset()")
+	}
+
+	Load16xU32(&q, src[0:], src[16:], src[32:], src[48:])
+	decrypt(b.numRounds, b.skExp[:], &q)
 	Store16xU32(dst[0:], dst[16:], dst[32:], dst[48:], &q)
 }
 
@@ -557,7 +568,7 @@ func NewCipher(key []byte) cipher.Block {
 	b.numRounds = Keysched(skey[:], key)
 	SkeyExpand(b.skExp[:], b.numRounds, skey[:])
 
-	b.CTRInit(b)
+	b.BlockModesImpl.Init(b)
 
 	return b
 }
