@@ -266,6 +266,67 @@ func TestCTR_keystream(t *testing.T) {
 	}
 }
 
+var cbcDecVectors = []struct {
+	key        string
+	iv         string
+	ciphertext string
+	plaintext  string
+}{
+	// CBC-AES128
+	{
+		"2b7e151628aed2a6abf7158809cf4f3c",
+		"000102030405060708090a0b0c0d0e0f",
+		"7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b273bed6b8e3c1743b7116e69e222295163ff1caa1681fac09120eca307586e1a7",
+		"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+	},
+	// CBC-AES192
+	{
+		"8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b",
+		"000102030405060708090a0b0c0d0e0f",
+		"4f021db243bc633d7178183a9fa071e8b4d9ada9ad7dedf4e5e738763f69145a571b242012fb7ae07fa9baac3df102e008b0e27988598881d920a9e64f5615cd",
+		"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+	},
+	// CBC-AES256
+	{
+
+		"603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+		"000102030405060708090a0b0c0d0e0f",
+		"f58c4c04d6e5f1ba779eabfb5f7bfbd69cfc4e967edb808d679f777bc6702c7d39f23369a9d9bacfa530e26304231461b2eb05e2c39be9fcda6c19078c6a9d1b",
+		"6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+	},
+}
+
+func TestCBCDecrypt_SP800_38A(t *testing.T) {
+	for _, impl := range impls {
+		t.Logf("Testing implementation: %v\n", impl.name)
+		for i, vec := range cbcDecVectors {
+			key, err := hex.DecodeString(vec.key[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			iv, err := hex.DecodeString(vec.iv[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			ct, err := hex.DecodeString(vec.ciphertext[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			pt, err := hex.DecodeString(vec.plaintext[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			b := impl.ctor(key)
+			dst := make([]byte, len(ct))
+
+			cbc := cipher.NewCBCDecrypter(b, iv)
+			cbc.CryptBlocks(dst, ct)
+			assertEqual(t, i, pt, dst)
+		}
+	}
+}
+
 func assertEqual(t *testing.T, idx int, expected, actual []byte) {
 	if !bytes.Equal(expected, actual) {
 		for i, v := range actual {
@@ -310,7 +371,7 @@ func doBenchECB(b *testing.B, impl *Impl, ksz int) {
 	copy(ecbBenchOutput[:], dst[:])
 }
 
-var ctrBenchOutput []byte
+var benchOutput []byte
 
 func doBenchCTR(b *testing.B, impl *Impl, ksz, n int) {
 	var iv [16]byte
@@ -332,7 +393,30 @@ func doBenchCTR(b *testing.B, impl *Impl, ksz, n int) {
 	for i := 0; i < b.N; i++ {
 		ctr.XORKeyStream(dst, src)
 	}
-	ctrBenchOutput = dst
+	benchOutput = dst
+}
+
+func doBenchCBC(b *testing.B, impl *Impl, ksz, n int) {
+	var iv [16]byte
+	key := make([]byte, ksz)
+
+	if _, err := rand.Read(key[:]); err != nil {
+		b.Error(err)
+		b.Fail()
+	}
+
+	blk := impl.ctor(key[:])
+	cbc := cipher.NewCBCDecrypter(blk, iv[:])
+
+	src := make([]byte, n)
+	dst := make([]byte, n)
+
+	b.SetBytes(int64(n))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cbc.CryptBlocks(dst, src)
+	}
+	benchOutput = dst
 }
 
 func implIsNative(impl *Impl) bool {
@@ -346,15 +430,19 @@ func doBench(b *testing.B, impl *Impl) {
 
 	b.SetParallelism(1) // We want per-core figures.
 
-	b.Run("ECB128", func(b *testing.B) { doBenchECB(b, implCt32, 16) })
+	b.Run("ECB-AES128", func(b *testing.B) { doBenchECB(b, implCt32, 16) })
 	if !testing.Short() { // No one cares about this mode.
-		b.Run("ECB192", func(b *testing.B) { doBenchECB(b, implCt32, 24) })
+		b.Run("ECB-AES192", func(b *testing.B) { doBenchECB(b, implCt32, 24) })
 	}
-	b.Run("ECB256", func(b *testing.B) { doBenchECB(b, implCt32, 16) })
+	b.Run("ECB-AES256", func(b *testing.B) { doBenchECB(b, implCt32, 16) })
 
 	for _, sz := range []int{16, 64, 256, 1024, 8192, 16384} {
-		n := fmt.Sprintf("CTR128_%d", sz)
+		n := fmt.Sprintf("CTR-AES128_%d", sz)
 		b.Run(n, func(b *testing.B) { doBenchCTR(b, impl, 16, sz) })
+	}
+	for _, sz := range []int{16, 64, 256, 1024, 8192, 16384} {
+		n := fmt.Sprintf("DecryptCBC-AES128_%d", sz)
+		b.Run(n, func(b *testing.B) { doBenchCBC(b, impl, 16, sz) })
 	}
 }
 
