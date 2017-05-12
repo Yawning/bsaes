@@ -34,14 +34,16 @@ Benchmarks:
 
 | Primitive                   | Version | ns/op  | MB/s   |
 | --------------------------- | :-----: | -----: | -----: |
-| ECB-AES128                  | ct32    | 760    | 21.03  |
-| ECB-AES256                  | ct32    | 1054   | 15.18  |
-| CTR-AES128 (16 KiB)         | ct32    | 376825 | 43.48  |
-| CBC-AES128 Decrypt (16 KiB) | ct32    | 444278 | 36.88  |
-| ECB-AES128                  | ct64    | 836    | 19.12  |
-| ECB-AES256                  | ct64    | 1098   | 14.56  |
-| CTR-AES128 (16 KiB)         | ct64    | 235429 | 69.59  |
-| CBC-AES128 Decrypt (16 KiB) | ct64    | 277880 | 58.96  |
+| ECB-AES128                  | ct32    | 914    | 17.50  |
+| ECB-AES256                  | ct32    | 1268   | 12.62  |
+| CTR-AES128 (16 KiB)         | ct32    | 472010 | 34.17  |
+| CBC-AES128 Decrypt (16 KiB) | ct32    | 583238 | 28.09  |
+| GCM-AES128 (16 KiB)         | ct32    | 605676 | 27.05  |
+| ECB-AES128                  | ct64    | 932    | 17.16  |
+| ECB-AES256                  | ct64    | 1258   | 12.72  |
+| CTR-AES128 (16 KiB)         | ct64    | 296016 | 55.35  |
+| CBC-AES128 Decrypt (16 KiB) | ct64    | 350047 | 46.81  |
+| GCM-AES128 (16 KiB)         | ct64    | 435660 | 37.61  |
 
 All numbers taken on an Intel i7-5600U with Turbo Boost disabled, running on
 linux/amd64.
