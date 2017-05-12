@@ -607,6 +607,33 @@ func doBenchCBC(b *testing.B, impl *Impl, ksz, n int) {
 	benchOutput = dst
 }
 
+func doBenchGCM(b *testing.B, impl *Impl, ksz, n int) {
+	var iv [96 / 8]byte
+	key := make([]byte, ksz)
+
+	if _, err := rand.Read(key[:]); err != nil {
+		b.Error(err)
+		b.Fail()
+	}
+
+	blk := impl.ctor(key[:])
+	gcm, err := cipher.NewGCM(blk)
+	if err != nil {
+		b.Error(err)
+		b.Fail()
+	}
+
+	src := make([]byte, n)
+	var dst []byte
+
+	b.SetBytes(int64(n))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		dst = gcm.Seal(nil, iv[:], src, nil)
+	}
+	benchOutput = dst
+}
+
 func implIsNative(impl *Impl) bool {
 	return impl == nativeImpl
 }
@@ -622,7 +649,7 @@ func doBench(b *testing.B, impl *Impl) {
 	if !testing.Short() { // No one cares about this mode.
 		b.Run("ECB-AES192", func(b *testing.B) { doBenchECB(b, implCt32, 24) })
 	}
-	b.Run("ECB-AES256", func(b *testing.B) { doBenchECB(b, implCt32, 16) })
+	b.Run("ECB-AES256", func(b *testing.B) { doBenchECB(b, implCt32, 32) })
 
 	for _, sz := range []int{16, 64, 256, 1024, 8192, 16384} {
 		n := fmt.Sprintf("CTR-AES128_%d", sz)
@@ -631,6 +658,10 @@ func doBench(b *testing.B, impl *Impl) {
 	for _, sz := range []int{16, 64, 256, 1024, 8192, 16384} {
 		n := fmt.Sprintf("DecryptCBC-AES128_%d", sz)
 		b.Run(n, func(b *testing.B) { doBenchCBC(b, impl, 16, sz) })
+	}
+	for _, sz := range []int{16, 64, 256, 1024, 8192, 16384} {
+		n := fmt.Sprintf("GCM-AES128_%d", sz)
+		b.Run(n, func(b *testing.B) { doBenchGCM(b, impl, 16, sz) })
 	}
 }
 
