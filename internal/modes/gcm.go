@@ -29,7 +29,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	. "git.schwanenlied.me/yawning/bsaes.git/ghash"
+	"git.schwanenlied.me/yawning/bsaes.git/ghash"
 )
 
 const (
@@ -43,7 +43,7 @@ func (m *BlockModesImpl) NewGCM(size int) (cipher.AEAD, error) {
 		return nil, errors.New("bsaes/NewGCM: GCM requires 128 bit block sizes")
 	}
 
-	return newGcmImpl(ecb, size), nil
+	return newGCMImpl(ecb, size), nil
 }
 
 type gcmImpl struct {
@@ -68,9 +68,9 @@ func (g *gcmImpl) deriveNonceVals(h, j, preCounterBlock *[blockSize]byte, nonce 
 		j[blockSize-1] = 1
 	} else {
 		var p [blockSize]byte
-		Ghash(j, h, nonce)
+		ghash.Ghash(j, h, nonce)
 		binary.BigEndian.PutUint32(p[12:], uint32(len(nonce))<<3)
-		Ghash(j, h, p[:])
+		ghash.Ghash(j, h, p[:])
 	}
 	g.ecb.Encrypt(preCounterBlock[:], j[:])
 }
@@ -128,11 +128,11 @@ func (g *gcmImpl) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 
 	// S = GHASH H (A || 0 v || C || 0 u || [len(A)] 64 || [len(C)] 64).
 	var s, p [blockSize]byte
-	Ghash(&s, &h, additionalData)
-	Ghash(&s, &h, out[:sz])
+	ghash.Ghash(&s, &h, additionalData)
+	ghash.Ghash(&s, &h, out[:sz])
 	binary.BigEndian.PutUint32(p[4:], uint32(len(additionalData))<<3)
 	binary.BigEndian.PutUint32(p[12:], uint32(sz)<<3)
-	Ghash(&s, &h, p[:])
+	ghash.Ghash(&s, &h, p[:])
 
 	// Let T = MSB t(GCTR K(J0, S))
 	for i, v := range preCounterBlock {
@@ -165,11 +165,11 @@ func (g *gcmImpl) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, e
 
 	// S = GHASH H (A || 0 v || C || 0 u || [len(A)] 64 || [len(C)] 64).
 	var s, p [blockSize]byte
-	Ghash(&s, &h, additionalData)
-	Ghash(&s, &h, ciphertext[:sz])
+	ghash.Ghash(&s, &h, additionalData)
+	ghash.Ghash(&s, &h, ciphertext[:sz])
 	binary.BigEndian.PutUint32(p[4:], uint32(len(additionalData))<<3)
 	binary.BigEndian.PutUint32(p[12:], uint32(sz)<<3)
-	Ghash(&s, &h, p[:])
+	ghash.Ghash(&s, &h, p[:])
 	for i, v := range preCounterBlock {
 		s[i] ^= v
 	}
@@ -190,7 +190,7 @@ func inc32(ctr *[blockSize]byte) {
 	binary.BigEndian.PutUint32(ctr[12:], v)
 }
 
-func newGcmImpl(ecb bulkECBAble, size int) cipher.AEAD {
+func newGCMImpl(ecb bulkECBAble, size int) cipher.AEAD {
 	g := new(gcmImpl)
 	g.ecb = ecb
 	g.nonceSize = size

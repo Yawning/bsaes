@@ -30,7 +30,7 @@ func (m *BlockModesImpl) NewCBCDecrypter(iv []byte) cipher.BlockMode {
 		panic("bsaes/NewCBCDecrypter: iv size does not match block size")
 	}
 
-	return newCbcDecImpl(ecb, iv)
+	return newCBCDecImpl(ecb, iv)
 }
 
 type cbcDecImpl struct {
@@ -80,7 +80,7 @@ func (c *cbcDecImpl) CryptBlocks(dst, src []byte) {
 	}
 }
 
-func newCbcDecImpl(ecb bulkECBAble, iv []byte) cipher.BlockMode {
+func newCBCDecImpl(ecb bulkECBAble, iv []byte) cipher.BlockMode {
 	c := new(cbcDecImpl)
 	c.ecb = ecb
 	c.stride = ecb.Stride()

@@ -33,7 +33,7 @@ func (m *BlockModesImpl) NewCTR(iv []byte) cipher.Stream {
 		panic("bsaes/NewCTR: iv size does not match block size")
 	}
 
-	return newCtrImpl(ecb, iv)
+	return newCTRImpl(ecb, iv)
 }
 
 type ctrImpl struct {
@@ -86,7 +86,7 @@ func (c *ctrImpl) generateKeyStream() {
 	c.ecb.BulkEncrypt(c.buf, c.buf)
 }
 
-func newCtrImpl(ecb bulkECBAble, iv []byte) cipher.Stream {
+func newCTRImpl(ecb bulkECBAble, iv []byte) cipher.Stream {
 	c := new(ctrImpl)
 	c.ecb = ecb
 	c.stride = ecb.Stride()
