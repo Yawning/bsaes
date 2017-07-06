@@ -8,9 +8,9 @@
 > -- https://golang.org/pkg/crypto/aes/
 
 bsaes is a portable pure-Go constant time AES implementation based on the
-excellent code from [BearSSL](https://bearssl.org/).  It does not use any
-special hardware instructions even if present (and never will), use
-`crypto/aes` on such platforms.
+excellent code from [BearSSL](https://bearssl.org/).  On AMD64 systems with
+AES-NI and a sufficiently recent Go runtime, it will transparently call
+`crypto/aes` when `NewCipher` is invoked.
 
 Features:
 
