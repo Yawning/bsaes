@@ -29,6 +29,13 @@ type Impl struct {
 var (
 	implCt32 = &Impl{"ct32", ct32.NewCipher}
 	implCt64 = &Impl{"ct64", ct64.NewCipher}
+	implRuntime = &Impl{"runtime", func(k []byte) cipher.Block {
+		blk, err := NewCipher(k)
+		if err != nil {
+			panic("implRuntime: NewCipher failed: " + err.Error())
+		}
+		return blk
+	}}
 
 	impls      = []*Impl{implCt32, implCt64}
 	nativeImpl = implCt64
@@ -210,9 +217,16 @@ func TestCTR_keystream(t *testing.T) {
 			strideSz = 2 * 16
 		case "ct64":
 			strideSz = 4 * 16
+		case "runtime":
+			// The CTR tests are tailored towards the bsaes CTR 
+			// so there is not much sense in testing `crypto/aes`'s,
+			// when it's using AES-NI and assembly.
+			t.Logf("Skipping CTR tests: %v\n", impl.name)
+			continue
 		default:
 			panic("unable to determine stride")
 		}
+		t.Logf("Testing implementation: %v\n", impl.name)
 
 		key := make([]byte, 16)
 		if _, err := rand.Read(key[:]); err != nil {
@@ -635,7 +649,7 @@ func doBenchGCM(b *testing.B, impl *Impl, ksz, n int) {
 }
 
 func implIsNative(impl *Impl) bool {
-	return impl == nativeImpl
+	return impl == nativeImpl || impl == implRuntime
 }
 
 func doBench(b *testing.B, impl *Impl) {
@@ -673,6 +687,13 @@ func Benchmark_ct64(b *testing.B) {
 	doBench(b, implCt64)
 }
 
+func Benchmark_runtime(b *testing.B) {
+	if !useCryptoAES {
+		b.SkipNow()
+	}
+	doBench(b, implRuntime)
+}
+
 func init() {
 	maxUintptr := uint64(^uintptr(0))
 	switch maxUintptr {
@@ -682,5 +703,8 @@ func init() {
 		nativeImpl = implCt64
 	default:
 		panic("bsaes: unsupported architecture")
+	}
+	if useCryptoAES {
+		impls = append(impls, implRuntime)
 	}
 }

@@ -24,6 +24,7 @@
 package bsaes
 
 import (
+	"crypto/aes"
 	"crypto/cipher"
 	"errors"
 	"math"
@@ -33,7 +34,10 @@ import (
 	"git.schwanenlied.me/yawning/bsaes.git/ct64"
 )
 
-var ctor = ct64.NewCipher
+var (
+	useCryptoAES = false
+	ctor         = ct64.NewCipher
+)
 
 type resetAble interface {
 	Reset()
@@ -47,6 +51,9 @@ func NewCipher(key []byte) (cipher.Block, error) {
 	case 16, 24, 32:
 	default:
 		return nil, errors.New("aes: Invalid key size")
+	}
+	if isCryptoAESSafe() {
+		return aes.NewCipher(key)
 	}
 
 	blk := ctor(key)
@@ -68,4 +75,5 @@ func init() {
 	default:
 		panic("bsaes: unsupported architecture")
 	}
+	useCryptoAES = isCryptoAESSafe()
 }
