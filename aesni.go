@@ -22,6 +22,8 @@
 
 // +build go1.6
 // +build !gccgo
+// +build !appengine
+// +build !noasm
 // +build amd64
 
 package bsaes
@@ -39,7 +41,7 @@ func supportsAESNI() bool {
 		aesniBit  = 1 << 25
 	)
 
-	// Check for AES-NI support.
+	// Check for AES-NI and PCLMUL support.
 	// CPUID.(EAX=01H, ECX=0H):ECX.AESNI[bit 25]==1
 	//                         ECX.PCLMUL[bit 1]==1
 	regs := [4]uint32{0x01}

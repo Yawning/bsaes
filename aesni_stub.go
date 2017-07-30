@@ -20,7 +20,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// +build !go1.6 gccgo !amd64
+// +build !go1.6 gccgo appengine noasm !amd64
 
 package bsaes
 
